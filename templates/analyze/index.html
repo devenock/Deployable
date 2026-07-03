@@ -4,136 +4,188 @@
 <head>
 {{template "head" .}}
 </head>
-<body class="bg-editor-bg text-gray-100 min-h-screen">
+<body class="bg-editor-bg text-gray-100 min-h-screen font-sans antialiased">
 {{template "nav" .}}
 {{template "flash" .}}
 
-<main class="max-w-2xl mx-auto px-4 py-16">
-  <h1 class="text-2xl font-semibold text-white text-center">Analyze your project</h1>
-  <p class="mt-2 text-center text-sm text-gray-400">
-    Upload a ZIP of your project to get a deployment readiness report.
-  </p>
+<section class="relative overflow-hidden">
+  <div class="absolute inset-0 bg-grid -z-10"></div>
+  <div class="glow -z-10 top-[-6rem] left-1/2 -translate-x-1/2 h-80 w-[36rem] bg-brand/15"></div>
 
-  <div id="upload-error" class="mt-6"></div>
-
-  {{if .GitHubConnected}}
-  <div class="mt-6 rounded-md border border-green-700/40 bg-green-900/10 px-4 py-3 text-sm text-green-400">
-    GitHub connected — you can now analyze private repositories.
-  </div>
-  {{end}}
-  {{if .OAuthError}}
-  <div class="mt-6 rounded-md border border-danger/40 bg-danger/10 px-4 py-3 text-sm text-danger">
-    Could not connect GitHub. Please try again.
-  </div>
-  {{end}}
-
-  <form id="zip-form" class="mt-8">
-    <label for="zip-input"
-           id="drop-zone"
-           class="flex flex-col items-center justify-center gap-3 rounded-lg border-2 border-dashed border-editor-border bg-editor-card px-6 py-16 text-center cursor-pointer hover:border-brand transition-colors"
-           hx-post="/analyze/zip"
-           hx-encoding="multipart/form-data"
-           hx-trigger="drop"
-           hx-swap="none"
-           hx-indicator="#upload-progress">
-      <span class="text-4xl">📦</span>
-      <span class="text-gray-200">Drag &amp; drop your project as a ZIP</span>
-      <span class="text-sm text-gray-500">or click to browse</span>
-      <span class="text-xs text-gray-600">Max {{.MaxUpload}}MB · No account required</span>
-      <input type="file" id="zip-input" name="file" accept=".zip" class="hidden"
-             hx-post="/analyze/zip"
-             hx-encoding="multipart/form-data"
-             hx-trigger="change"
-             hx-swap="none"
-             hx-indicator="#upload-progress">
-    </label>
-    <div id="upload-progress" class="htmx-indicator mt-4 text-center text-sm text-gray-400">
-      Uploading and starting analysis…
+  <div class="max-w-xl mx-auto px-4 py-16">
+    <div class="text-center">
+      <h1 class="fade-up text-3xl font-bold text-white tracking-tight">Analyze your project</h1>
+      <p class="fade-up mt-2 text-gray-400 [animation-delay:60ms]">Get a deployment readiness report in under a minute.</p>
     </div>
-  </form>
 
-  <p class="mt-4 text-center text-xs text-gray-600">
-    Tip: exclude <code class="text-gray-500">node_modules</code>, <code class="text-gray-500">vendor</code>,
-    <code class="text-gray-500">.git</code>, and build output before zipping — they're skipped during
-    analysis anyway and only eat into the size limit.
-  </p>
-
-  <div class="mt-10 flex items-center gap-3 text-sm text-gray-500">
-    <div class="h-px flex-1 bg-editor-border"></div>
-    <span>or paste a GitHub URL</span>
-    <div class="h-px flex-1 bg-editor-border"></div>
-  </div>
-
-  <div id="github-error" class="mt-4"></div>
-
-  <form id="github-form" class="mt-4"
-        hx-post="/analyze/github"
-        hx-swap="none"
-        hx-indicator="#github-progress">
-    <div class="flex gap-2">
-      <input type="text" name="url" required
-             placeholder="github.com/owner/repository"
-             class="flex-1 rounded-lg border border-editor-border bg-editor-card px-4 py-3 text-sm text-gray-200 placeholder-gray-600 focus:border-brand focus:outline-none">
-      <button type="submit"
-              class="rounded-lg bg-brand px-5 py-3 text-sm font-medium text-white hover:bg-brand/90 transition-colors">
-        Analyze
-      </button>
+    {{if .GitHubConnected}}
+    <div class="mt-6 rounded-md border border-success/40 bg-success/10 px-4 py-3 text-sm text-success">
+      GitHub connected — you can now analyze private repositories.
     </div>
-    <p class="mt-2 text-xs text-gray-600">
-      Public repos: no account needed. Private repos:
-      {{if .HasGitHubConnected}}
-        <span class="text-green-500">GitHub connected ✓</span>
-      {{else if .User}}
-        <a href="/auth/github/connect" class="text-brand hover:underline">Connect GitHub</a>
-      {{else}}
-        <a href="/login" class="text-brand hover:underline">log in</a>, then connect GitHub
-      {{end}}
-    </p>
-    <div id="github-progress" class="htmx-indicator mt-2 text-xs text-gray-400">
-      Fetching repository and starting analysis…
+    {{end}}
+    {{if .OAuthError}}
+    <div class="mt-6 rounded-md border border-danger/40 bg-danger/10 px-4 py-3 text-sm text-danger">
+      Could not connect GitHub. Please try again.
     </div>
-  </form>
+    {{end}}
 
-  <div class="mt-10 flex items-center gap-3 text-sm text-gray-500">
-    <div class="h-px flex-1 bg-editor-border"></div>
-    <span>or use the CLI</span>
-    <div class="h-px flex-1 bg-editor-border"></div>
-  </div>
-
-  <div class="mt-4 rounded-lg border border-editor-border bg-editor-card px-4 py-4 text-sm">
-    <p class="text-gray-400">Install:</p>
-    <code class="mt-1 block rounded bg-black/30 px-3 py-2 text-xs text-gray-300 overflow-x-auto">curl -sSL {{.AppURL}}/install.sh | bash</code>
-    <p class="mt-3 text-gray-400">Then run in your project directory:</p>
-    <code class="mt-1 block rounded bg-black/30 px-3 py-2 text-xs text-gray-300 overflow-x-auto">deployable .</code>
-
-    <div id="api-key-section" class="mt-4 border-t border-editor-border pt-4">
-      {{if .User}}
-        <p class="text-gray-400">For a shareable report URL, add your API key:</p>
-        {{if .HasAPIKey}}
-          <code class="mt-1 block rounded bg-black/30 px-3 py-2 text-xs text-gray-300 overflow-x-auto">deployable . --api-key &lt;your key&gt;</code>
-          <button hx-post="/account/api-key" hx-target="#api-key-section" hx-swap="innerHTML"
-                  class="mt-2 text-xs text-brand hover:underline">
-            Regenerate API key (invalidates the current one)
+    <div data-tabs>
+      <div class="fade-up mt-8 flex justify-center [animation-delay:100ms]">
+        <div class="inline-flex items-center gap-1 rounded-lg border border-editor-border bg-editor-card p-1">
+          <button type="button" data-tab-trigger="zip" aria-selected="true"
+                  class="rounded-md bg-brand px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors">
+            📦 Upload ZIP
           </button>
-        {{else}}
-          <button hx-post="/account/api-key" hx-target="#api-key-section" hx-swap="innerHTML"
-                  class="mt-2 rounded-lg bg-brand px-4 py-2 text-xs font-medium text-white hover:bg-brand/90 transition-colors">
-            Generate API key
+          <button type="button" data-tab-trigger="github" aria-selected="false"
+                  class="rounded-md px-4 py-2 text-sm font-medium text-gray-400 hover:text-gray-200 transition-colors">
+            🐙 GitHub URL
           </button>
-        {{end}}
-      {{else}}
-        <p class="text-gray-400">
-          <a href="/register" class="text-brand hover:underline">Create a free account</a> to get an API key for shareable report URLs.
-        </p>
-      {{end}}
+          <button type="button" data-tab-trigger="cli" aria-selected="false"
+                  class="rounded-md px-4 py-2 text-sm font-medium text-gray-400 hover:text-gray-200 transition-colors">
+            💻 CLI
+          </button>
+        </div>
+      </div>
+
+      <div class="fade-up mt-5 rounded-xl border border-editor-border bg-editor-card/90 backdrop-blur-sm p-6 sm:p-7 shadow-2xl shadow-black/40 [animation-delay:140ms]">
+
+        <!-- ZIP -->
+        <div data-tab-panel="zip">
+          <div id="upload-error"></div>
+
+          <form id="zip-form">
+            <label for="zip-input" data-dropzone
+                   class="flex flex-col items-center justify-center gap-2.5 rounded-lg border-2 border-dashed border-editor-border px-6 py-14 text-center cursor-pointer hover:border-brand/60 hover:bg-brand/5 transition-colors"
+                   hx-post="/analyze/zip"
+                   hx-encoding="multipart/form-data"
+                   hx-trigger="drop"
+                   hx-swap="none"
+                   hx-indicator="#upload-progress">
+              <div class="flex h-12 w-12 items-center justify-center rounded-full bg-brand/10 text-brand">
+                {{template "icon-upload-cloud" .}}
+              </div>
+              <span data-dropzone-label class="text-gray-200 font-medium">Drag &amp; drop your project as a ZIP</span>
+              <span class="text-sm text-gray-500">or click to browse</span>
+              <span class="text-xs text-gray-600">Max {{.MaxUpload}}MB · No account required</span>
+              <input type="file" id="zip-input" name="file" accept=".zip" class="hidden"
+                     hx-post="/analyze/zip"
+                     hx-encoding="multipart/form-data"
+                     hx-trigger="change"
+                     hx-swap="none"
+                     hx-indicator="#upload-progress">
+            </label>
+            <div id="upload-progress" class="htmx-indicator mt-4 flex items-center justify-center gap-2 text-sm text-gray-400">
+              {{template "icon-spinner" .}}
+              Uploading and starting analysis…
+            </div>
+          </form>
+
+          <p class="mt-4 text-center text-xs text-gray-600">
+            Tip: exclude <code class="text-gray-500">node_modules</code>, <code class="text-gray-500">vendor</code>,
+            <code class="text-gray-500">.git</code>, and build output before zipping — they're skipped during
+            analysis anyway and only eat into the size limit.
+          </p>
+        </div>
+
+        <!-- GitHub -->
+        <div data-tab-panel="github" class="hidden">
+          <div id="github-error"></div>
+
+          <form id="github-form" hx-post="/analyze/github" hx-swap="none" hx-indicator="#github-progress">
+            <label class="block text-sm text-gray-400 mb-1.5" for="github-url">Repository URL</label>
+            <div class="relative">
+              <span class="pointer-events-none absolute inset-y-0 left-3 flex items-center text-gray-500">{{template "icon-github" .}}</span>
+              <input type="text" id="github-url" name="url" required
+                     placeholder="github.com/owner/repository"
+                     class="w-full rounded-md border border-editor-border bg-editor-bg pl-10 pr-3 py-2.5 text-sm text-gray-200 placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent transition-shadow">
+            </div>
+            <button type="submit"
+                    class="mt-3 w-full rounded-md bg-brand px-4 py-2.5 text-sm font-medium text-white shadow-lg shadow-brand/20 hover:bg-indigo-500 transition-colors">
+              Analyze repository
+            </button>
+            <p class="mt-3 text-center text-xs text-gray-600">
+              Public repos: no account needed. Private repos:
+              {{if .HasGitHubConnected}}
+                <span class="text-success">GitHub connected ✓</span>
+              {{else if .User}}
+                <a href="/auth/github/connect" class="text-brand hover:underline">Connect GitHub</a>
+              {{else}}
+                <a href="/login" class="text-brand hover:underline">Log in</a>, then connect GitHub
+              {{end}}
+            </p>
+            <div id="github-progress" class="htmx-indicator mt-3 flex items-center justify-center gap-2 text-xs text-gray-400">
+              {{template "icon-spinner" .}}
+              Fetching repository and starting analysis…
+            </div>
+          </form>
+        </div>
+
+        <!-- CLI -->
+        <div data-tab-panel="cli" class="hidden">
+          <div class="rounded-lg border border-editor-border bg-[#0a0d12] overflow-hidden">
+            <div class="flex items-center gap-1.5 border-b border-editor-border bg-editor-surface px-3 py-2">
+              <span class="h-2 w-2 rounded-full bg-danger/70"></span>
+              <span class="h-2 w-2 rounded-full bg-warn/70"></span>
+              <span class="h-2 w-2 rounded-full bg-success/70"></span>
+            </div>
+            <div class="p-4 space-y-3">
+              <div>
+                <p class="text-xs text-gray-500 mb-1.5">Install</p>
+                <div class="flex items-center justify-between gap-2 rounded bg-black/30 pl-3 pr-2 py-2">
+                  <code id="cli-install-cmd" class="text-xs text-gray-300 overflow-x-auto whitespace-nowrap">curl -sSL {{.AppURL}}/install.sh | bash</code>
+                  <button type="button" data-copy="cli-install-cmd" aria-label="Copy install command"
+                          class="shrink-0 text-gray-500 hover:text-gray-300 transition-colors">
+                    {{template "icon-copy-toggle" .}}
+                  </button>
+                </div>
+              </div>
+              <div>
+                <p class="text-xs text-gray-500 mb-1.5">Run in your project directory</p>
+                <div class="flex items-center justify-between gap-2 rounded bg-black/30 pl-3 pr-2 py-2">
+                  <code id="cli-run-cmd" class="text-xs text-gray-300">deployable .</code>
+                  <button type="button" data-copy="cli-run-cmd" aria-label="Copy run command"
+                          class="shrink-0 text-gray-500 hover:text-gray-300 transition-colors">
+                    {{template "icon-copy-toggle" .}}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div id="api-key-section" class="mt-4">
+            {{if .User}}
+              <p class="text-sm text-gray-400">For a shareable report URL, add your API key:</p>
+              {{if .HasAPIKey}}
+                <div class="mt-2 flex items-center justify-between gap-2 rounded bg-black/30 pl-3 pr-2 py-2">
+                  <code class="text-xs text-gray-300 overflow-x-auto whitespace-nowrap">deployable . --api-key &lt;your key&gt;</code>
+                </div>
+                <button hx-post="/account/api-key" hx-target="#api-key-section" hx-swap="innerHTML"
+                        class="mt-2 text-xs text-brand hover:underline">
+                  Regenerate API key (invalidates the current one)
+                </button>
+              {{else}}
+                <button hx-post="/account/api-key" hx-target="#api-key-section" hx-swap="innerHTML"
+                        class="mt-3 w-full rounded-md bg-brand px-4 py-2.5 text-sm font-medium text-white shadow-lg shadow-brand/20 hover:bg-indigo-500 transition-colors">
+                  Generate API key
+                </button>
+              {{end}}
+            {{else}}
+              <p class="text-sm text-gray-400 text-center">
+                <a href="/register" class="text-brand hover:underline">Create a free account</a> to get an API key for shareable report URLs.
+              </p>
+            {{end}}
+          </div>
+        </div>
+
+      </div>
     </div>
   </div>
-</main>
+</section>
 
 <script>
   function showFormError(boxID, message) {
     const box = document.getElementById(boxID);
-    box.innerHTML = '<div class="rounded-md border border-danger/40 bg-danger/10 px-4 py-3 text-sm text-danger">' +
+    box.innerHTML = '<div class="mb-4 rounded-md border border-danger/40 bg-danger/10 px-4 py-3 text-sm text-danger">' +
       (message || 'Something went wrong, please try again.') + '</div>';
   }
 
@@ -147,9 +199,21 @@
 {{end}}
 
 {{define "api-key-generated"}}
-<p class="text-gray-400">Your new API key (copy it now — it won't be shown again):</p>
-<code class="mt-1 block rounded bg-black/30 px-3 py-2 text-xs text-green-400 overflow-x-auto select-all">{{.APIKey}}</code>
-<code class="mt-2 block rounded bg-black/30 px-3 py-2 text-xs text-gray-300 overflow-x-auto">deployable . --api-key {{.APIKey}}</code>
+<p class="text-sm text-gray-400">Your new API key (copy it now — it won't be shown again):</p>
+<div class="mt-2 flex items-center justify-between gap-2 rounded bg-black/30 pl-3 pr-2 py-2">
+  <code id="new-api-key" class="text-xs text-success overflow-x-auto whitespace-nowrap select-all">{{.APIKey}}</code>
+  <button type="button" data-copy="new-api-key" aria-label="Copy API key"
+          class="shrink-0 text-gray-500 hover:text-gray-300 transition-colors">
+    {{template "icon-copy-toggle" .}}
+  </button>
+</div>
+<div class="mt-2 flex items-center justify-between gap-2 rounded bg-black/30 pl-3 pr-2 py-2">
+  <code id="new-api-key-cmd" class="text-xs text-gray-300 overflow-x-auto whitespace-nowrap">deployable . --api-key {{.APIKey}}</code>
+  <button type="button" data-copy="new-api-key-cmd" aria-label="Copy command"
+          class="shrink-0 text-gray-500 hover:text-gray-300 transition-colors">
+    {{template "icon-copy-toggle" .}}
+  </button>
+</div>
 <button hx-post="/account/api-key" hx-target="#api-key-section" hx-swap="innerHTML"
         class="mt-2 text-xs text-brand hover:underline">
   Regenerate API key (invalidates the current one)
