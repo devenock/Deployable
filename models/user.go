@@ -190,6 +190,40 @@ func CreateGoogleUser(ctx context.Context, pool *pgxpool.Pool, email, name, goog
 	return u, nil
 }
 
+// SetGitHubToken stores an encrypted GitHub token granting repo access,
+// obtained via the "connect GitHub" flow (broader scope than the read:user/
+// user:email one used for sign-in). github_id/github_login are backfilled
+// only if not already set, so this doesn't clobber an existing GitHub-login
+// linkage for a different account.
+func SetGitHubToken(ctx context.Context, pool *pgxpool.Pool, userID uuid.UUID, encryptedToken, githubID, githubLogin string) error {
+	_, err := pool.Exec(ctx, `
+		UPDATE users
+		SET github_token = $1,
+		    github_id = COALESCE(github_id, $2),
+		    github_login = COALESCE(github_login, $3),
+		    updated_at = NOW()
+		WHERE id = $4
+	`, encryptedToken, githubID, githubLogin, userID)
+	if err != nil {
+		return fmt.Errorf("set github token: %w", err)
+	}
+	return nil
+}
+
+// GetGitHubToken returns the user's encrypted GitHub token, or ErrNotFound
+// if they haven't connected GitHub for repo access.
+func GetGitHubToken(ctx context.Context, pool *pgxpool.Pool, userID uuid.UUID) (string, error) {
+	var token *string
+	err := pool.QueryRow(ctx, `SELECT github_token FROM users WHERE id = $1`, userID).Scan(&token)
+	if err != nil {
+		return "", fmt.Errorf("get github token: %w", err)
+	}
+	if token == nil || *token == "" {
+		return "", ErrNotFound
+	}
+	return *token, nil
+}
+
 // MarkEmailVerified sets email_verified_at to now for the given user.
 func MarkEmailVerified(ctx context.Context, pool *pgxpool.Pool, userID uuid.UUID) error {
 	_, err := pool.Exec(ctx, `UPDATE users SET email_verified_at = NOW(), updated_at = NOW() WHERE id = $1`, userID)
