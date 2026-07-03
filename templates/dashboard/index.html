@@ -1,0 +1,126 @@
+{{define "dashboard-index"}}
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+{{template "head" .}}
+</head>
+<body class="bg-editor-bg text-gray-100 min-h-screen font-sans antialiased">
+{{template "nav" .}}
+{{template "flash" .}}
+
+<section class="relative overflow-hidden min-h-screen">
+  <div class="absolute inset-0 bg-grid -z-10"></div>
+
+  <div class="max-w-4xl mx-auto px-4 py-12">
+    <div class="fade-up flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div>
+        <h1 class="text-2xl font-bold text-white tracking-tight">Your reports</h1>
+        <p class="mt-1 text-sm text-gray-400">Everything you've analyzed, in one place.</p>
+      </div>
+      <a href="/analyze"
+         class="inline-flex items-center justify-center rounded-md bg-brand px-4 py-2 text-sm font-medium text-white shadow-lg shadow-brand/20 hover:bg-indigo-500 transition-colors">
+        + Analyze a project
+      </a>
+    </div>
+
+    <div class="fade-up mt-6 [animation-delay:60ms]">
+      <div class="relative">
+        <span class="pointer-events-none absolute inset-y-0 left-3 flex items-center text-gray-500">
+          <svg class="h-[18px] w-[18px]" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.7"/>
+            <path d="m20 20-3.5-3.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+          </svg>
+        </span>
+        <input type="search" name="search" value="{{.Search}}"
+               placeholder="Search by repo, filename, language, or framework…"
+               class="w-full rounded-md border border-editor-border bg-editor-card pl-10 pr-3 py-2.5 text-sm text-gray-200 placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent transition-shadow"
+               hx-get="/dashboard"
+               hx-target="#dashboard-results"
+               hx-trigger="keyup changed delay:400ms, search"
+               hx-push-url="true">
+      </div>
+    </div>
+
+    <div id="dashboard-results" class="fade-up mt-6 [animation-delay:100ms]">
+      {{template "dashboard-results" .}}
+    </div>
+  </div>
+</section>
+</body>
+</html>
+{{end}}
+
+{{define "dashboard-results"}}
+{{if .Reports}}
+<div class="space-y-3">
+  {{range .Reports}}
+  <div data-report-row class="rounded-lg border border-editor-border bg-editor-card p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+    <div class="min-w-0 flex-1">
+      <div class="flex items-center gap-2">
+        <a href="/report/{{.Slug}}" class="font-medium text-white hover:text-brand transition-colors truncate">
+          {{if .InputRef}}{{.InputRef}}{{else}}ZIP upload{{end}}
+        </a>
+        <span class="shrink-0 rounded-full border border-editor-border px-2 py-0.5 text-[10px] uppercase tracking-wide text-gray-500">{{.InputType}}</span>
+      </div>
+      <p class="mt-1 text-xs text-gray-500">
+        {{if .Language}}{{.Language}}{{else}}Unknown stack{{end}}{{if .Framework}} · {{.Framework}}{{end}} · Analyzed {{timeAgo .CreatedAt}}
+      </p>
+    </div>
+    <div class="flex items-center gap-2 shrink-0">
+      <span class="w-10 text-center text-sm font-semibold {{scoreColor .ReadinessScore}}">{{.ReadinessScore}}</span>
+      <a href="/report/{{.Slug}}"
+         class="rounded-md border border-editor-border bg-editor-bg px-3 py-1.5 text-xs text-gray-300 hover:bg-editor-surface transition-colors">
+        View
+      </a>
+      {{if eq .InputType "github"}}
+      <button type="button" aria-label="Rescan"
+              hx-post="/report/{{.Slug}}/rescan" hx-swap="none"
+              class="rounded-md border border-editor-border bg-editor-bg p-1.5 text-gray-400 hover:text-gray-200 transition-colors">
+        {{template "icon-refresh" $}}
+      </button>
+      {{end}}
+      <button type="button" aria-label="Delete"
+              hx-delete="/report/{{.Slug}}" hx-target="closest [data-report-row]" hx-swap="outerHTML swap:0.2s"
+              hx-confirm="Delete this report? This can't be undone."
+              class="rounded-md border border-danger/30 bg-danger/5 p-1.5 text-danger hover:bg-danger/10 transition-colors">
+        {{template "icon-trash" $}}
+      </button>
+    </div>
+  </div>
+  {{end}}
+</div>
+
+<div class="mt-6 flex items-center justify-between text-sm text-gray-400">
+  <span>{{.Total}} report{{if ne .Total 1}}s{{end}}</span>
+  {{if gt .TotalPages 1}}
+  <div class="flex items-center gap-2">
+    {{if .HasPrev}}
+    <button hx-get="/dashboard?search={{.Search | urlquery}}&page={{sub .Page 1}}"
+            hx-target="#dashboard-results" hx-push-url="true"
+            class="rounded-md border border-editor-border px-3 py-1.5 hover:bg-editor-card transition-colors">
+      Prev
+    </button>
+    {{end}}
+    <span class="px-2">Page {{.Page}} of {{.TotalPages}}</span>
+    {{if .HasNext}}
+    <button hx-get="/dashboard?search={{.Search | urlquery}}&page={{add .Page 1}}"
+            hx-target="#dashboard-results" hx-push-url="true"
+            class="rounded-md border border-editor-border px-3 py-1.5 hover:bg-editor-card transition-colors">
+      Next
+    </button>
+    {{end}}
+  </div>
+  {{end}}
+</div>
+
+{{else}}
+<div class="rounded-xl border border-dashed border-editor-border bg-editor-card/50 px-6 py-16 text-center">
+  {{if .Search}}
+  <p class="text-gray-400">No reports match "{{.Search}}".</p>
+  {{else}}
+  <p class="text-gray-400">No reports yet.</p>
+  <a href="/analyze" class="mt-3 inline-block text-sm text-brand hover:underline">Analyze your first project →</a>
+  {{end}}
+</div>
+{{end}}
+{{end}}
