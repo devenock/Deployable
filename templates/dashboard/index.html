@@ -14,16 +14,10 @@
   <main class="max-w-4xl mx-auto px-4 sm:px-8 py-8">
 
     <!-- Overview -->
-    <div data-dash-panel="dashboard" class="{{if eq .ActiveNav "analyze"}}hidden{{end}}">
-      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 class="text-2xl font-bold text-white tracking-tight">Your reports</h1>
-          <p class="mt-1 text-sm text-gray-400">Everything you've analyzed, in one place.</p>
-        </div>
-        <a href="/dashboard?tab=analyze" data-dash-nav-trigger="analyze"
-           class="inline-flex items-center justify-center rounded-md bg-brand px-4 py-2 text-sm font-medium text-white shadow-lg shadow-brand/20 hover:bg-indigo-500 transition-colors">
-          + Analyze a project
-        </a>
+    <div data-dash-panel="dashboard" class="{{if ne .ActiveNav "dashboard"}}hidden{{end}}">
+      <div>
+        <h1 class="text-2xl font-bold text-white tracking-tight">Overview</h1>
+        <p class="mt-1 text-sm text-gray-400">Your analysis activity and connected repos at a glance.</p>
       </div>
 
       <!-- Stats -->
@@ -100,8 +94,27 @@
           <div id="repo-picker"></div>
         </div>
       </div>
+    </div>
 
-      <div class="mt-8">
+    <!-- Analyze (embedded — see analyze-form in templates/analyze/index.html) -->
+    <div data-dash-panel="analyze" class="max-w-xl {{if ne .ActiveNav "analyze"}}hidden{{end}}">
+      {{template "analyze-form" .}}
+    </div>
+
+    <!-- Reports -->
+    <div data-dash-panel="reports" class="{{if ne .ActiveNav "reports"}}hidden{{end}}">
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 class="text-2xl font-bold text-white tracking-tight">Your reports</h1>
+          <p class="mt-1 text-sm text-gray-400">Everything you've analyzed, in one place.</p>
+        </div>
+        <a href="/dashboard?tab=analyze" data-dash-nav-trigger="analyze"
+           class="inline-flex items-center justify-center rounded-md bg-brand px-4 py-2 text-sm font-medium text-white shadow-lg shadow-brand/20 hover:bg-indigo-500 transition-colors">
+          + Analyze a project
+        </a>
+      </div>
+
+      <div class="mt-6">
         <div class="relative">
           <span class="pointer-events-none absolute inset-y-0 left-3 flex items-center text-gray-500">
             <svg class="h-[18px] w-[18px]" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -112,7 +125,7 @@
           <input type="search" name="search" value="{{.Search}}"
                  placeholder="Search by repo, filename, language, or framework…"
                  class="w-full rounded-md border border-editor-border bg-editor-card pl-10 pr-3 py-2.5 text-sm text-gray-200 placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent transition-shadow"
-                 hx-get="/dashboard"
+                 hx-get="/dashboard?tab=reports"
                  hx-target="#dashboard-results"
                  hx-trigger="keyup changed delay:400ms, search"
                  hx-push-url="true">
@@ -122,11 +135,6 @@
       <div id="dashboard-results" class="mt-6">
         {{template "dashboard-results" .}}
       </div>
-    </div>
-
-    <!-- Analyze (embedded — see analyze-form in templates/analyze/index.html) -->
-    <div data-dash-panel="analyze" class="max-w-xl {{if ne .ActiveNav "analyze"}}hidden{{end}}">
-      {{template "analyze-form" .}}
     </div>
 
   </main>
@@ -180,7 +188,7 @@
   {{if gt .TotalPages 1}}
   <div class="flex items-center gap-2">
     {{if .HasPrev}}
-    <button hx-get="/dashboard?search={{.Search | urlquery}}&page={{sub .Page 1}}"
+    <button hx-get="/dashboard?tab=reports&search={{.Search | urlquery}}&page={{sub .Page 1}}"
             hx-target="#dashboard-results" hx-push-url="true"
             class="rounded-md border border-editor-border px-3 py-1.5 hover:bg-editor-card transition-colors">
       Prev
@@ -188,7 +196,7 @@
     {{end}}
     <span class="px-2">Page {{.Page}} of {{.TotalPages}}</span>
     {{if .HasNext}}
-    <button hx-get="/dashboard?search={{.Search | urlquery}}&page={{add .Page 1}}"
+    <button hx-get="/dashboard?tab=reports&search={{.Search | urlquery}}&page={{add .Page 1}}"
             hx-target="#dashboard-results" hx-push-url="true"
             class="rounded-md border border-editor-border px-3 py-1.5 hover:bg-editor-card transition-colors">
       Next
