@@ -104,6 +104,9 @@ func main() {
 	// Health check
 	r.Get("/health", handlers.HealthHandler(pool, rdb, version))
 
+	// API docs (Swagger UI, backed by /static/openapi.yaml)
+	r.Get("/docs", handlers.DocsHandler(deps))
+
 	// Public routes
 	r.Get("/", handlers.LandingHandler(deps))
 	r.Get("/login", handlers.LoginPage(deps))
