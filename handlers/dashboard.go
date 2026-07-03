@@ -69,6 +69,7 @@ func Dashboard(deps Deps) http.HandlerFunc {
 		}
 		data["HasGitHub"] = hasGitHub
 		data["ConnectedRepos"] = connectedRepos
+		data["ActiveNav"] = "dashboard"
 
 		deps.Render(w, "dashboard-index", data)
 	}
