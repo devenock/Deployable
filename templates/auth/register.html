@@ -4,62 +4,104 @@
 <head>
 {{template "head" .}}
 </head>
-<body class="bg-editor-bg text-gray-100 min-h-screen">
+<body class="bg-editor-bg text-gray-100 min-h-screen font-sans antialiased">
 {{template "nav" .}}
 {{template "flash" .}}
 
-<main class="max-w-sm mx-auto px-4 py-20">
-  <h1 class="text-2xl font-semibold text-white text-center">Create your account</h1>
+{{template "auth-shell-open" .}}
+  <a href="/" class="fade-up flex items-center justify-center gap-2 text-lg font-semibold text-white">
+    {{template "logomark" .}}
+    Deploy<span class="text-brand">able</span>
+  </a>
+  <h1 class="fade-up mt-6 text-2xl font-semibold text-white text-center [animation-delay:60ms]">Create your account</h1>
+  <p class="fade-up mt-1.5 text-center text-sm text-gray-400 [animation-delay:60ms]">Free to start. No credit card required.</p>
 
-  {{if .Error}}
-  <div class="mt-6 rounded-md border border-danger/40 bg-danger/10 px-4 py-3 text-sm text-danger">
-    {{.Error}}
-  </div>
-  {{end}}
-
-  <form method="POST" action="/register" class="mt-6 space-y-4">
-    <div>
-      <label class="block text-sm text-gray-400 mb-1" for="name">Name</label>
-      <input type="text" id="name" name="name" required
-             value="{{.Name}}"
-             class="w-full rounded-md border border-editor-border bg-editor-card px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-brand">
+  <div class="fade-up mt-7 rounded-xl border border-editor-border bg-editor-card/90 backdrop-blur-sm p-6 sm:p-7 shadow-2xl shadow-black/40 [animation-delay:120ms]">
+    {{if .Error}}
+    <div class="mb-5 rounded-md border border-danger/40 bg-danger/10 px-4 py-3 text-sm text-danger">
+      {{.Error}}
     </div>
-    <div>
-      <label class="block text-sm text-gray-400 mb-1" for="email">Email</label>
-      <input type="email" id="email" name="email" required
-             value="{{.Email}}"
-             class="w-full rounded-md border border-editor-border bg-editor-card px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-brand">
-    </div>
-    <div>
-      <label class="block text-sm text-gray-400 mb-1" for="password">Password</label>
-      <input type="password" id="password" name="password" required minlength="8"
-             class="w-full rounded-md border border-editor-border bg-editor-card px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-brand">
-      <p class="mt-1 text-xs text-gray-500">Minimum 8 characters</p>
-    </div>
-    <button type="submit" class="w-full rounded-md bg-brand px-4 py-2 text-white font-medium hover:opacity-90">
-      Create account
-    </button>
-  </form>
+    {{end}}
 
-  <div class="mt-6 flex items-center gap-3">
-    <div class="h-px flex-1 bg-editor-border"></div>
-    <span class="text-xs text-gray-500">or</span>
-    <div class="h-px flex-1 bg-editor-border"></div>
+    <form method="POST" action="/register" class="space-y-4" novalidate>
+      <div>
+        <label class="block text-sm text-gray-400 mb-1.5" for="name">Name</label>
+        <div class="relative">
+          <span class="pointer-events-none absolute inset-y-0 left-3 flex items-center text-gray-500">{{template "icon-user" .}}</span>
+          <input type="text" id="name" name="name" required autocomplete="name"
+                 value="{{.Name}}" placeholder="Jane Doe"
+                 class="w-full rounded-md border border-editor-border bg-editor-bg pl-10 pr-3 py-2.5 text-white placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent transition-shadow">
+        </div>
+      </div>
+      <div>
+        <label class="block text-sm text-gray-400 mb-1.5" for="email">Email</label>
+        <div class="relative">
+          <span class="pointer-events-none absolute inset-y-0 left-3 flex items-center text-gray-500">{{template "icon-mail" .}}</span>
+          <input type="email" id="email" name="email" required autocomplete="email"
+                 value="{{.Email}}" placeholder="you@example.com"
+                 class="w-full rounded-md border border-editor-border bg-editor-bg pl-10 pr-3 py-2.5 text-white placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent transition-shadow">
+        </div>
+      </div>
+      <div>
+        <label class="block text-sm text-gray-400 mb-1.5" for="password">Password</label>
+        <div class="relative">
+          <span class="pointer-events-none absolute inset-y-0 left-3 flex items-center text-gray-500">{{template "icon-lock" .}}</span>
+          <input type="password" id="password" name="password" required minlength="8" autocomplete="new-password"
+                 placeholder="At least 8 characters"
+                 class="w-full rounded-md border border-editor-border bg-editor-bg pl-10 pr-10 py-2.5 text-white placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent transition-shadow">
+          <button type="button" data-password-toggle="password" aria-label="Show password" tabindex="-1"
+                  class="absolute inset-y-0 right-3 flex items-center text-gray-500 hover:text-gray-300 transition-colors">
+            {{template "icon-eye-toggle" .}}
+          </button>
+        </div>
+        <div id="password-strength" class="mt-2">
+          <div class="flex gap-1">
+            <div data-bar class="h-1 flex-1 rounded-full bg-editor-border"></div>
+            <div data-bar class="h-1 flex-1 rounded-full bg-editor-border"></div>
+            <div data-bar class="h-1 flex-1 rounded-full bg-editor-border"></div>
+            <div data-bar class="h-1 flex-1 rounded-full bg-editor-border"></div>
+          </div>
+          <p data-label class="mt-1 text-xs text-gray-500">Minimum 8 characters</p>
+        </div>
+      </div>
+      <div>
+        <label class="block text-sm text-gray-400 mb-1.5" for="confirm_password">Confirm password</label>
+        <div class="relative">
+          <span class="pointer-events-none absolute inset-y-0 left-3 flex items-center text-gray-500">{{template "icon-lock" .}}</span>
+          <input type="password" id="confirm_password" name="confirm_password" required autocomplete="new-password"
+                 placeholder="Re-enter your password"
+                 class="w-full rounded-md border border-editor-border bg-editor-bg pl-10 pr-10 py-2.5 text-white placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent transition-shadow">
+          <button type="button" data-password-toggle="confirm_password" aria-label="Show password" tabindex="-1"
+                  class="absolute inset-y-0 right-3 flex items-center text-gray-500 hover:text-gray-300 transition-colors">
+            {{template "icon-eye-toggle" .}}
+          </button>
+        </div>
+      </div>
+      <button type="submit" class="w-full rounded-md bg-brand px-4 py-2.5 text-white font-medium shadow-lg shadow-brand/20 hover:bg-indigo-500 transition-colors">
+        Create account
+      </button>
+    </form>
+
+    <div class="mt-6 flex items-center gap-3">
+      <div class="h-px flex-1 bg-editor-border"></div>
+      <span class="text-xs text-gray-500">or continue with</span>
+      <div class="h-px flex-1 bg-editor-border"></div>
+    </div>
+
+    <div class="mt-5 grid grid-cols-2 gap-3">
+      <a href="/auth/github" class="flex items-center justify-center gap-2 rounded-md border border-editor-border bg-editor-bg px-4 py-2.5 text-sm font-medium text-gray-200 hover:bg-editor-surface hover:border-gray-600 transition-colors">
+        {{template "icon-github" .}} GitHub
+      </a>
+      <a href="/auth/google" class="flex items-center justify-center gap-2 rounded-md border border-editor-border bg-editor-bg px-4 py-2.5 text-sm font-medium text-gray-200 hover:bg-editor-surface hover:border-gray-600 transition-colors">
+        {{template "icon-google" .}} Google
+      </a>
+    </div>
   </div>
 
-  <div class="mt-6 space-y-3">
-    <a href="/auth/github" class="flex items-center justify-center gap-2 w-full rounded-md border border-editor-border bg-editor-card px-4 py-2 text-sm font-medium text-gray-200 hover:bg-editor-surface">
-      Continue with GitHub
-    </a>
-    <a href="/auth/google" class="flex items-center justify-center gap-2 w-full rounded-md border border-editor-border bg-editor-card px-4 py-2 text-sm font-medium text-gray-200 hover:bg-editor-surface">
-      Continue with Google
-    </a>
-  </div>
-
-  <p class="mt-6 text-center text-sm text-gray-400">
+  <p class="fade-up mt-6 text-center text-sm text-gray-400 [animation-delay:160ms]">
     Already have an account? <a href="/login" class="text-brand hover:underline">Sign in</a>
   </p>
-</main>
+{{template "auth-shell-close" .}}
 </body>
 </html>
 {{end}}
