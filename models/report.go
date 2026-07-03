@@ -261,6 +261,32 @@ func ListReportsByUser(ctx context.Context, pool *pgxpool.Pool, userID uuid.UUID
 	return summaries, total, nil
 }
 
+// ReportStats is an at-a-glance summary of a user's report history, shown
+// on the dashboard overview.
+type ReportStats struct {
+	TotalReports   int
+	AvgScore       int
+	NeedsAttention int // readiness_score < 60
+}
+
+// GetReportStats computes aggregate stats for a user's reports in one
+// round trip.
+func GetReportStats(ctx context.Context, pool *pgxpool.Pool, userID uuid.UUID) (*ReportStats, error) {
+	s := &ReportStats{}
+	err := pool.QueryRow(ctx, `
+		SELECT
+			COUNT(*),
+			COALESCE(ROUND(AVG(readiness_score)), 0)::int,
+			COUNT(*) FILTER (WHERE readiness_score < 60)
+		FROM reports
+		WHERE user_id = $1
+	`, userID).Scan(&s.TotalReports, &s.AvgScore, &s.NeedsAttention)
+	if err != nil {
+		return nil, fmt.Errorf("get report stats: %w", err)
+	}
+	return s, nil
+}
+
 func generateSlug() (string, error) {
 	b := make([]byte, 6)
 	if _, err := rand.Read(b); err != nil {
