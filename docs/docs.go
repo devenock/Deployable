@@ -37,6 +37,32 @@ const docTemplate = `{
                 }
             }
         },
+        "/account/api-key": {
+            "post": {
+                "description": "Requires a session_id cookie. Creates a new random API key for the CLI, invalidating any previous one, and returns an HTML partial showing it once — it is never displayed again after this response. Lands on the /analyze page's CLI section.",
+                "produces": [
+                    "text/html"
+                ],
+                "tags": [
+                    "web"
+                ],
+                "summary": "Generate (or regenerate) an API key",
+                "responses": {
+                    "200": {
+                        "description": "HTML partial with the raw key",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "303": {
+                        "description": "No valid session — redirects to /login",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/analyze": {
             "get": {
                 "description": "Public, rate-limited input page for starting an analysis (zip upload; GitHub/CLI tabs land in Phase 3/4). Works for anonymous visitors — if a session cookie is present the resulting job/report is attributed to that user.",
@@ -228,17 +254,47 @@ const docTemplate = `{
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "Requires an X-API-Key header. The key is SHA-256 hashed and checked against Redis first, then Postgres (users.api_key_hash) on a cache miss. Subject to Redis-backed rate limiting (default 5/hour, keyed on the X-Real-IP header set by Caddy). Full submission handling lands in Phase 4.",
+                "description": "Requires an X-API-Key header. Accepts the same multipart .zip upload as the web /analyze/zip endpoint (max 100MB by default, configurable via MAX_UPLOAD_BYTES) and kicks off the same analysis pipeline, attributed to the API key's owner. Subject to Redis-backed rate limiting (default 5/hour).",
+                "consumes": [
+                    "multipart/form-data"
+                ],
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "api"
                 ],
-                "summary": "Submit an analysis (stub)",
+                "summary": "Submit a project as a ZIP upload",
+                "parameters": [
+                    {
+                        "type": "file",
+                        "description": "Project source as a .zip archive",
+                        "name": "file",
+                        "in": "formData",
+                        "required": true
+                    }
+                ],
                 "responses": {
+                    "202": {
+                        "description": "Accepted",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.APIJobCreated"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
                     "401": {
                         "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "413": {
+                        "description": "Request Entity Too Large",
                         "schema": {
                             "$ref": "#/definitions/handlers.ErrorResponse"
                         }
@@ -247,12 +303,6 @@ const docTemplate = `{
                         "description": "Too Many Requests",
                         "schema": {
                             "$ref": "#/definitions/handlers.ErrorResponse"
-                        }
-                    },
-                    "501": {
-                        "description": "not implemented",
-                        "schema": {
-                            "type": "string"
                         }
                     }
                 }
@@ -265,14 +315,14 @@ const docTemplate = `{
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "Requires an X-API-Key header. Job status polling lands in Phase 4.",
+                "description": "Requires an X-API-Key header. Polls the same Redis-backed progress state the web processing page uses. Once status is \"complete\", report_slug is set — fetch the full result from GET /api/v1/report/{slug}.",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "api"
                 ],
-                "summary": "Get analysis job status (stub)",
+                "summary": "Get analysis job status",
                 "parameters": [
                     {
                         "type": "string",
@@ -283,8 +333,20 @@ const docTemplate = `{
                     }
                 ],
                 "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.APIJobStatus"
+                        }
+                    },
                     "401": {
                         "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
                         "schema": {
                             "$ref": "#/definitions/handlers.ErrorResponse"
                         }
@@ -294,11 +356,57 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/handlers.ErrorResponse"
                         }
-                    },
-                    "501": {
-                        "description": "not implemented",
+                    }
+                }
+            }
+        },
+        "/api/v1/report/{slug}": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Requires an X-API-Key header. Returns the same data as the web report page (/report/{slug}) in a machine-readable shape — used by the CLI to render its terminal summary.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "api"
+                ],
+                "summary": "Get a report as JSON",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Report slug",
+                        "name": "slug",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
                         "schema": {
-                            "type": "string"
+                            "$ref": "#/definitions/handlers.APIReportPayload"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     }
                 }
@@ -907,6 +1015,121 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "handlers.APIJobCreated": {
+            "type": "object",
+            "properties": {
+                "job_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "handlers.APIJobStatus": {
+            "type": "object",
+            "properties": {
+                "job_id": {
+                    "type": "string"
+                },
+                "message": {
+                    "type": "string"
+                },
+                "report_slug": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "step": {
+                    "type": "integer"
+                },
+                "total_steps": {
+                    "type": "integer"
+                }
+            }
+        },
+        "handlers.APIReportPayload": {
+            "type": "object",
+            "properties": {
+                "complexity_score": {
+                    "type": "integer"
+                },
+                "critical_gaps": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "databases": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "est_rps": {
+                    "type": "integer"
+                },
+                "framework": {
+                    "type": "string"
+                },
+                "generated_files": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "language": {
+                    "type": "string"
+                },
+                "language_version": {
+                    "type": "string"
+                },
+                "min_cpu": {
+                    "type": "number"
+                },
+                "min_ram_mb": {
+                    "type": "integer"
+                },
+                "platforms": {
+                    "type": "array",
+                    "items": {}
+                },
+                "readiness_score": {
+                    "type": "integer"
+                },
+                "readiness_summary": {
+                    "type": "string"
+                },
+                "rec_ram_mb": {
+                    "type": "integer"
+                },
+                "resource_reasoning": {
+                    "type": "string"
+                },
+                "security_score": {
+                    "type": "integer"
+                },
+                "slug": {
+                    "type": "string"
+                },
+                "storage_gb": {
+                    "type": "integer"
+                },
+                "suggestions": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "url": {
+                    "type": "string"
+                },
+                "warnings": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
         "handlers.ErrorResponse": {
             "type": "object",
             "properties": {

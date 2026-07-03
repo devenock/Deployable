@@ -1,5 +1,81 @@
 basePath: /
 definitions:
+  handlers.APIJobCreated:
+    properties:
+      job_id:
+        type: string
+    type: object
+  handlers.APIJobStatus:
+    properties:
+      job_id:
+        type: string
+      message:
+        type: string
+      report_slug:
+        type: string
+      status:
+        type: string
+      step:
+        type: integer
+      total_steps:
+        type: integer
+    type: object
+  handlers.APIReportPayload:
+    properties:
+      complexity_score:
+        type: integer
+      critical_gaps:
+        items:
+          type: string
+        type: array
+      databases:
+        items:
+          type: string
+        type: array
+      est_rps:
+        type: integer
+      framework:
+        type: string
+      generated_files:
+        items:
+          type: string
+        type: array
+      language:
+        type: string
+      language_version:
+        type: string
+      min_cpu:
+        type: number
+      min_ram_mb:
+        type: integer
+      platforms:
+        items: {}
+        type: array
+      readiness_score:
+        type: integer
+      readiness_summary:
+        type: string
+      rec_ram_mb:
+        type: integer
+      resource_reasoning:
+        type: string
+      security_score:
+        type: integer
+      slug:
+        type: string
+      storage_gb:
+        type: integer
+      suggestions:
+        items:
+          type: string
+        type: array
+      url:
+        type: string
+      warnings:
+        items:
+          type: string
+        type: array
+    type: object
   handlers.ErrorResponse:
     properties:
       error:
@@ -42,6 +118,26 @@ paths:
           schema:
             type: string
       summary: Landing page
+      tags:
+      - web
+  /account/api-key:
+    post:
+      description: Requires a session_id cookie. Creates a new random API key for
+        the CLI, invalidating any previous one, and returns an HTML partial showing
+        it once — it is never displayed again after this response. Lands on the /analyze
+        page's CLI section.
+      produces:
+      - text/html
+      responses:
+        "200":
+          description: HTML partial with the raw key
+          schema:
+            type: string
+        "303":
+          description: No valid session — redirects to /login
+          schema:
+            type: string
+      summary: Generate (or regenerate) an API key
       tags:
       - web
   /analyze:
@@ -181,34 +277,51 @@ paths:
       - web
   /api/v1/analyze:
     post:
-      description: Requires an X-API-Key header. The key is SHA-256 hashed and checked
-        against Redis first, then Postgres (users.api_key_hash) on a cache miss. Subject
-        to Redis-backed rate limiting (default 5/hour, keyed on the X-Real-IP header
-        set by Caddy). Full submission handling lands in Phase 4.
+      consumes:
+      - multipart/form-data
+      description: Requires an X-API-Key header. Accepts the same multipart .zip upload
+        as the web /analyze/zip endpoint (max 100MB by default, configurable via MAX_UPLOAD_BYTES)
+        and kicks off the same analysis pipeline, attributed to the API key's owner.
+        Subject to Redis-backed rate limiting (default 5/hour).
+      parameters:
+      - description: Project source as a .zip archive
+        in: formData
+        name: file
+        required: true
+        type: file
       produces:
       - application/json
       responses:
+        "202":
+          description: Accepted
+          schema:
+            $ref: '#/definitions/handlers.APIJobCreated'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
         "401":
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "413":
+          description: Request Entity Too Large
           schema:
             $ref: '#/definitions/handlers.ErrorResponse'
         "429":
           description: Too Many Requests
           schema:
             $ref: '#/definitions/handlers.ErrorResponse'
-        "501":
-          description: not implemented
-          schema:
-            type: string
       security:
       - ApiKeyAuth: []
-      summary: Submit an analysis (stub)
+      summary: Submit a project as a ZIP upload
       tags:
       - api
   /api/v1/analyze/{jobID}:
     get:
-      description: Requires an X-API-Key header. Job status polling lands in Phase
-        4.
+      description: Requires an X-API-Key header. Polls the same Redis-backed progress
+        state the web processing page uses. Once status is "complete", report_slug
+        is set — fetch the full result from GET /api/v1/report/{slug}.
       parameters:
       - description: Analysis job ID
         in: path
@@ -218,21 +331,60 @@ paths:
       produces:
       - application/json
       responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.APIJobStatus'
         "401":
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Not Found
           schema:
             $ref: '#/definitions/handlers.ErrorResponse'
         "429":
           description: Too Many Requests
           schema:
             $ref: '#/definitions/handlers.ErrorResponse'
-        "501":
-          description: not implemented
-          schema:
-            type: string
       security:
       - ApiKeyAuth: []
-      summary: Get analysis job status (stub)
+      summary: Get analysis job status
+      tags:
+      - api
+  /api/v1/report/{slug}:
+    get:
+      description: Requires an X-API-Key header. Returns the same data as the web
+        report page (/report/{slug}) in a machine-readable shape — used by the CLI
+        to render its terminal summary.
+      parameters:
+      - description: Report slug
+        in: path
+        name: slug
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.APIReportPayload'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Get a report as JSON
       tags:
       - api
   /auth/github:
