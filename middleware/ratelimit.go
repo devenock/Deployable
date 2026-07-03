@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"encoding/json"
+	"net"
 	"net/http"
 	"os"
 	"strconv"
@@ -22,7 +23,7 @@ func RateLimit(rdb *cache.Client) func(http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ip := r.Header.Get("X-Real-IP")
 			if ip == "" {
-				ip = r.RemoteAddr
+				ip = remoteIP(r.RemoteAddr)
 			}
 
 			ctx := r.Context()
@@ -45,6 +46,17 @@ func RateLimit(rdb *cache.Client) func(http.Handler) http.Handler {
 			next.ServeHTTP(w, r)
 		})
 	}
+}
+
+// remoteIP strips the port from a "host:port" RemoteAddr, since without it
+// every request would key the rate limiter by a distinct ephemeral port
+// rather than the client's actual address.
+func remoteIP(remoteAddr string) string {
+	host, _, err := net.SplitHostPort(remoteAddr)
+	if err != nil {
+		return remoteAddr
+	}
+	return host
 }
 
 func envInt(key string, fallback int) int {
