@@ -1,0 +1,90 @@
+version: "3.9"
+
+services:
+  caddy:
+    image: caddy:2-alpine
+    container_name: deployable_caddy
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+      - /var/log/caddy:/var/log/caddy
+    networks:
+      - deployable_network
+    depends_on:
+      - app
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: deployable_app:latest
+    container_name: deployable_app
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - deployable_uploads:/app/data/uploads
+      - deployable_tmp:/app/data/tmp
+    networks:
+      - deployable_network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: deployable_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - deployable_pgdata:/var/lib/postgresql/data
+    networks:
+      - deployable_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: deployable_redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - deployable_redis:/data
+    networks:
+      - deployable_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+networks:
+  deployable_network:
+    driver: bridge
+
+volumes:
+  deployable_pgdata:
+  deployable_redis:
+  deployable_uploads:
+  deployable_tmp:
+  caddy_data:
+  caddy_config:

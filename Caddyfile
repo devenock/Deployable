@@ -1,0 +1,30 @@
+{
+    email admin@{$DOMAIN}
+}
+
+{$DOMAIN} {
+    reverse_proxy app:8080 {
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Real-IP {remote_host}
+    }
+
+    # Security headers
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains"
+        X-Content-Type-Options nosniff
+        X-Frame-Options DENY
+        Referrer-Policy strict-origin-when-cross-origin
+    }
+
+    # File upload size limit (matches Go handler limit)
+    request_body {
+        max_size 55MB
+    }
+
+    encode gzip
+
+    log {
+        output file /var/log/caddy/access.log
+        format json
+    }
+}
