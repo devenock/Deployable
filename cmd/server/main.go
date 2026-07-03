@@ -186,6 +186,7 @@ func main() {
 	r.Group(func(r chi.Router) {
 		r.Use(middleware.RequireAuth(pool, rdb))
 		r.Get("/dashboard", handlers.Dashboard(deps))
+		r.Post("/account/api-key", handlers.GenerateAPIKey(deps))
 	})
 
 	// REST API for CLI — same rationale as the web /analyze group: only the
@@ -194,6 +195,13 @@ func main() {
 		r.Use(middleware.RequireAPIKey(pool, rdb))
 		r.With(middleware.RateLimit(rdb)).Post("/analyze", handlers.APIAnalyze(deps))
 		r.Get("/analyze/{jobID}", handlers.APIAnalyzeStatus(deps))
+		r.Get("/report/{slug}", handlers.APIReport(deps))
+	})
+
+	// CLI install script.
+	r.Get("/install.sh", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/x-shellscript")
+		http.ServeFileFS(w, r, assets.InstallScript, "scripts/install.sh")
 	})
 
 	port := os.Getenv("PORT")

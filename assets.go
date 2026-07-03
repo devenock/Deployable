@@ -10,3 +10,11 @@ import "embed"
 
 //go:embed templates static
 var Files embed.FS
+
+// InstallScript is scripts/install.sh, served at GET /install.sh so users can
+// `curl -sSL <app-url>/install.sh | bash`. Embedded separately from Files
+// (rather than adding scripts/ wholesale) so backup.sh — an operator-only
+// script — is never reachable over HTTP.
+//
+//go:embed scripts/install.sh
+var InstallScript embed.FS
