@@ -8,7 +8,52 @@ document.addEventListener('DOMContentLoaded', function () {
   renderRecentReports();
   initScrollReveal();
   initSidebar();
+  initDashboardSections();
 });
+
+// Switches between the dashboard's sections (Overview / Analyze) without a
+// page navigation — the sidebar's Dashboard/Analyze links carry both a real
+// href (so they still work with JS disabled, and from other pages that
+// reuse app-sidebar, like the standalone /analyze page) and
+// data-dash-nav-trigger; when a matching [data-dash-panel] exists on the
+// current page, clicks are intercepted and swap panels in place instead.
+// No-ops on pages with no dashboard panels (the href just does its job).
+function initDashboardSections() {
+  var triggers = document.querySelectorAll('[data-dash-nav-trigger]');
+  var panels = document.querySelectorAll('[data-dash-panel]');
+  if (!triggers.length || !panels.length) return;
+
+  triggers.forEach(function (trigger) {
+    trigger.addEventListener('click', function (e) {
+      e.preventDefault();
+      var section = trigger.getAttribute('data-dash-nav-trigger');
+
+      triggers.forEach(function (t) {
+        var active = t.getAttribute('data-dash-nav-trigger') === section;
+        t.classList.toggle('bg-brand/10', active);
+        t.classList.toggle('text-brand', active);
+        t.classList.toggle('font-medium', active);
+        t.classList.toggle('text-gray-400', !active);
+      });
+
+      panels.forEach(function (p) {
+        p.classList.toggle('hidden', p.getAttribute('data-dash-panel') !== section);
+      });
+
+      var url = section === 'analyze' ? '/dashboard?tab=analyze' : '/dashboard';
+      window.history.replaceState({}, '', url);
+
+      // Close the mobile drawer after picking a section — staying open
+      // over the freshly-swapped content just gets in the way.
+      if (window.matchMedia('(max-width: 639px)').matches) {
+        var sidebar = document.getElementById('app-sidebar');
+        var backdrop = document.getElementById('sidebar-backdrop');
+        if (sidebar) sidebar.classList.add('-translate-x-full');
+        if (backdrop) backdrop.classList.add('hidden');
+      }
+    });
+  });
+}
 
 // Toggles the off-canvas app-sidebar (see the app-sidebar/app-topbar
 // partials in base.html) on mobile — #sidebar-toggle lives in the topbar,

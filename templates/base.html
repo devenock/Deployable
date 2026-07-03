@@ -237,10 +237,12 @@
   </a>
 
   <nav class="flex-1 space-y-1 overflow-y-auto px-3 py-4">
-    <a href="/dashboard" class="flex items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-colors {{if eq .ActiveNav "dashboard"}}bg-brand/10 text-brand font-medium{{else}}text-gray-400 hover:bg-editor-card hover:text-white{{end}}">
+    <a href="/dashboard" data-dash-nav-trigger="dashboard"
+       class="flex items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-colors {{if eq .ActiveNav "dashboard"}}bg-brand/10 text-brand font-medium{{else}}text-gray-400 hover:bg-editor-card hover:text-white{{end}}">
       {{template "icon-dashboard" .}} Dashboard
     </a>
-    <a href="/analyze" class="flex items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-colors {{if eq .ActiveNav "analyze"}}bg-brand/10 text-brand font-medium{{else}}text-gray-400 hover:bg-editor-card hover:text-white{{end}}">
+    <a href="/dashboard?tab=analyze" data-dash-nav-trigger="analyze"
+       class="flex items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-colors {{if eq .ActiveNav "analyze"}}bg-brand/10 text-brand font-medium{{else}}text-gray-400 hover:bg-editor-card hover:text-white{{end}}">
       {{template "icon-upload-cloud" .}} Analyze
     </a>
   </nav>
