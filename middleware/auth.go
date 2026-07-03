@@ -3,7 +3,6 @@ package middleware
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"net/http"
 	"time"
 
@@ -39,44 +38,60 @@ func UserFromContext(ctx context.Context) (*models.User, bool) {
 func RequireAuth(pool *pgxpool.Pool, rdb *cache.Client) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			cookie, err := r.Cookie("session_id")
-			if err != nil || cookie.Value == "" {
+			user, ok := resolveSessionUser(r.Context(), pool, rdb, r)
+			if !ok {
 				http.Redirect(w, r, "/login", http.StatusSeeOther)
 				return
 			}
-			sessionID := cookie.Value
-			ctx := r.Context()
-
-			cacheKey := "session:" + sessionID
-			if raw, err := rdb.Get(ctx, cacheKey); err == nil {
-				var cs cachedSession
-				if json.Unmarshal([]byte(raw), &cs) == nil {
-					user := &models.User{ID: cs.UserID, Email: cs.Email, Plan: cs.Plan}
-					next.ServeHTTP(w, r.WithContext(context.WithValue(ctx, UserContextKey, user)))
-					return
-				}
-			}
-
-			session, err := models.FindSession(ctx, pool, sessionID)
-			if err != nil || session.ExpiresAt.Before(time.Now()) {
-				if err != nil && !errors.Is(err, models.ErrNotFound) {
-					// DB error: still fail closed to /login rather than 500
-				}
-				http.Redirect(w, r, "/login", http.StatusSeeOther)
-				return
-			}
-
-			user, err := models.FindUserByID(ctx, pool, session.UserID)
-			if err != nil {
-				http.Redirect(w, r, "/login", http.StatusSeeOther)
-				return
-			}
-
-			if payload, err := json.Marshal(cachedSession{UserID: user.ID, Email: user.Email, Plan: user.Plan}); err == nil {
-				_ = rdb.Set(ctx, cacheKey, payload, sessionCacheTTL)
-			}
-
-			next.ServeHTTP(w, r.WithContext(context.WithValue(ctx, UserContextKey, user)))
+			next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), UserContextKey, user)))
 		})
 	}
+}
+
+// OptionalAuth resolves the session_id cookie the same way RequireAuth does,
+// but never blocks the request — anonymous visitors pass through with no
+// user in context. Used for routes like /analyze that work for both
+// anonymous and logged-in visitors (rate limits and report ownership differ
+// based on whether a user is present).
+func OptionalAuth(pool *pgxpool.Pool, rdb *cache.Client) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if user, ok := resolveSessionUser(r.Context(), pool, rdb, r); ok {
+				r = r.WithContext(context.WithValue(r.Context(), UserContextKey, user))
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
+func resolveSessionUser(ctx context.Context, pool *pgxpool.Pool, rdb *cache.Client, r *http.Request) (*models.User, bool) {
+	cookie, err := r.Cookie("session_id")
+	if err != nil || cookie.Value == "" {
+		return nil, false
+	}
+	sessionID := cookie.Value
+
+	cacheKey := "session:" + sessionID
+	if raw, err := rdb.Get(ctx, cacheKey); err == nil {
+		var cs cachedSession
+		if json.Unmarshal([]byte(raw), &cs) == nil {
+			return &models.User{ID: cs.UserID, Email: cs.Email, Plan: cs.Plan}, true
+		}
+	}
+
+	session, err := models.FindSession(ctx, pool, sessionID)
+	if err != nil || session.ExpiresAt.Before(time.Now()) {
+		return nil, false
+	}
+
+	user, err := models.FindUserByID(ctx, pool, session.UserID)
+	if err != nil {
+		return nil, false
+	}
+
+	if payload, err := json.Marshal(cachedSession{UserID: user.ID, Email: user.Email, Plan: user.Plan}); err == nil {
+		_ = rdb.Set(ctx, cacheKey, payload, sessionCacheTTL)
+	}
+
+	return user, true
 }
