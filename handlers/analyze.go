@@ -21,6 +21,7 @@ import (
 	"deployable/internal/analyzer"
 	"deployable/internal/claude"
 	tokencrypto "deployable/internal/crypto"
+	"deployable/internal/generator"
 	ghclient "deployable/internal/github"
 	"deployable/middleware"
 	"deployable/models"
@@ -192,94 +193,105 @@ func AnalyzeGitHub(deps Deps) http.HandlerFunc {
 		}
 
 		var userID *uuid.UUID
-		token := ""
 		if user, ok := middleware.UserFromContext(r.Context()); ok {
 			userID = &user.ID
-			if encrypted, err := models.GetGitHubToken(r.Context(), deps.Pool, user.ID); err == nil {
-				if plain, err := tokencrypto.DecryptToken(encrypted); err == nil {
-					token = plain
-				} else {
-					log.Printf("decrypt github token for user %s: %v", user.ID, err)
-				}
-			}
 		}
 
-		client := ghclient.NewClient(token)
-
-		info, err := client.GetRepo(r.Context(), owner, repo)
-		if err != nil {
-			switch {
-			case errors.Is(err, ghclient.ErrNotFound):
-				http.Error(w, "Repository not found or private. If it's private, connect your GitHub account first, then paste the URL again.", http.StatusNotFound)
-			case errors.Is(err, ghclient.ErrRateLimited):
-				http.Error(w, "GitHub API rate limit exceeded, please try again later.", http.StatusTooManyRequests)
-			default:
-				log.Printf("github repo lookup %s/%s: %v", owner, repo, err)
-				http.Error(w, "Could not reach GitHub, please try again", http.StatusBadGateway)
-			}
+		job, status, msg := startGitHubAnalysis(r.Context(), deps, userID, owner, repo, clientIP(r))
+		if status != 0 {
+			http.Error(w, msg, status)
 			return
 		}
-
-		maxBytes := envInt64("MAX_UPLOAD_BYTES", defaultMaxUploadBytes)
-
-		job, err := models.CreateJob(r.Context(), deps.Pool, userID, "github", "github.com/"+owner+"/"+repo, clientIP(r))
-		if err != nil {
-			log.Printf("create job: %v", err)
-			http.Error(w, "could not start analysis", http.StatusInternalServerError)
-			return
-		}
-
-		zipPath := filepath.Join(tmpDir(), job.ID.String()+".zip")
-		written, err := client.DownloadZipball(r.Context(), owner, repo, info.DefaultBranch, zipPath, maxBytes)
-		if err != nil {
-			_ = os.Remove(zipPath)
-			log.Printf("download zipball %s/%s: %v", owner, repo, err)
-			http.Error(w, "Could not download the repository archive from GitHub, please try again", http.StatusBadGateway)
-			return
-		}
-		if written > maxBytes {
-			_ = os.Remove(zipPath)
-			http.Error(w, fmt.Sprintf(
-				"This repository's archive exceeds the %dMB analysis limit.",
-				maxBytes/(1024*1024),
-			), http.StatusRequestEntityTooLarge)
-			return
-		}
-
-		extractDir := filepath.Join(tmpDir(), job.ID.String())
-		if err := os.MkdirAll(extractDir, 0755); err != nil {
-			_ = os.Remove(zipPath)
-			log.Printf("mkdir extract dir: %v", err)
-			http.Error(w, "could not start analysis", http.StatusInternalServerError)
-			return
-		}
-
-		zf, err := os.Open(zipPath)
-		if err != nil {
-			_ = os.Remove(zipPath)
-			_ = os.RemoveAll(extractDir)
-			log.Printf("open downloaded zipball: %v", err)
-			http.Error(w, "could not start analysis", http.StatusInternalServerError)
-			return
-		}
-		extractErr := extractZip(zf, written, extractDir, maxBytes)
-		zf.Close()
-		_ = os.Remove(zipPath)
-		if extractErr != nil {
-			_ = os.RemoveAll(extractDir)
-			log.Printf("extract github zipball for job %s: %v", job.ID, extractErr)
-			http.Error(w, "invalid repository archive", http.StatusBadRequest)
-			return
-		}
-
-		analysisRoot := normalizeExtractRoot(extractDir)
-
-		setJobStatus(context.Background(), deps, job.ID, "pending")
-		go runAnalysisPipeline(deps, job.ID, userID, extractDir, analysisRoot)
 
 		w.Header().Set("HX-Redirect", "/analyze/"+job.ID.String()+"/processing")
 		w.WriteHeader(http.StatusOK)
 	}
+}
+
+// startGitHubAnalysis resolves the requester's GitHub token (if any),
+// downloads and extracts the repo's default-branch zipball, creates a job,
+// and kicks off the analysis pipeline in the background. Shared by
+// AnalyzeGitHub and the report page's rescan action, which differ only in
+// how they arrive at (userID, owner, repo) — status == 0 means success.
+func startGitHubAnalysis(ctx context.Context, deps Deps, userID *uuid.UUID, owner, repo, ipAddress string) (job *models.AnalysisJob, status int, userMsg string) {
+	token := ""
+	if userID != nil {
+		if encrypted, err := models.GetGitHubToken(ctx, deps.Pool, *userID); err == nil {
+			if plain, err := tokencrypto.DecryptToken(encrypted); err == nil {
+				token = plain
+			} else {
+				log.Printf("decrypt github token for user %s: %v", *userID, err)
+			}
+		}
+	}
+
+	client := ghclient.NewClient(token)
+
+	info, err := client.GetRepo(ctx, owner, repo)
+	if err != nil {
+		switch {
+		case errors.Is(err, ghclient.ErrNotFound):
+			return nil, http.StatusNotFound, "Repository not found or private. If it's private, connect your GitHub account first, then paste the URL again."
+		case errors.Is(err, ghclient.ErrRateLimited):
+			return nil, http.StatusTooManyRequests, "GitHub API rate limit exceeded, please try again later."
+		default:
+			log.Printf("github repo lookup %s/%s: %v", owner, repo, err)
+			return nil, http.StatusBadGateway, "Could not reach GitHub, please try again"
+		}
+	}
+
+	maxBytes := envInt64("MAX_UPLOAD_BYTES", defaultMaxUploadBytes)
+
+	j, err := models.CreateJob(ctx, deps.Pool, userID, "github", "github.com/"+owner+"/"+repo, ipAddress)
+	if err != nil {
+		log.Printf("create job: %v", err)
+		return nil, http.StatusInternalServerError, "could not start analysis"
+	}
+
+	zipPath := filepath.Join(tmpDir(), j.ID.String()+".zip")
+	written, err := client.DownloadZipball(ctx, owner, repo, info.DefaultBranch, zipPath, maxBytes)
+	if err != nil {
+		_ = os.Remove(zipPath)
+		log.Printf("download zipball %s/%s: %v", owner, repo, err)
+		return nil, http.StatusBadGateway, "Could not download the repository archive from GitHub, please try again"
+	}
+	if written > maxBytes {
+		_ = os.Remove(zipPath)
+		return nil, http.StatusRequestEntityTooLarge, fmt.Sprintf(
+			"This repository's archive exceeds the %dMB analysis limit.",
+			maxBytes/(1024*1024),
+		)
+	}
+
+	extractDir := filepath.Join(tmpDir(), j.ID.String())
+	if err := os.MkdirAll(extractDir, 0755); err != nil {
+		_ = os.Remove(zipPath)
+		log.Printf("mkdir extract dir: %v", err)
+		return nil, http.StatusInternalServerError, "could not start analysis"
+	}
+
+	zf, err := os.Open(zipPath)
+	if err != nil {
+		_ = os.Remove(zipPath)
+		_ = os.RemoveAll(extractDir)
+		log.Printf("open downloaded zipball: %v", err)
+		return nil, http.StatusInternalServerError, "could not start analysis"
+	}
+	extractErr := extractZip(zf, written, extractDir, maxBytes)
+	zf.Close()
+	_ = os.Remove(zipPath)
+	if extractErr != nil {
+		_ = os.RemoveAll(extractDir)
+		log.Printf("extract github zipball for job %s: %v", j.ID, extractErr)
+		return nil, http.StatusBadRequest, "invalid repository archive"
+	}
+
+	analysisRoot := normalizeExtractRoot(extractDir)
+
+	setJobStatus(context.Background(), deps, j.ID, "pending")
+	go runAnalysisPipeline(deps, j.ID, userID, extractDir, analysisRoot)
+
+	return j, 0, ""
 }
 
 // ProcessingPage godoc
@@ -319,7 +331,7 @@ func ProcessingPage(deps Deps) http.HandlerFunc {
 // @Tags         web
 // @Produce      html
 // @Param        jobID  path  string  true  "Analysis job ID"
-// @Success      200  {string}  string  "Progress partial, or HX-Redirect to /report/{slug} once complete"
+// @Success      200  {string}  string  "Progress partial, or HX-Redirect to /report/{slug}?new=1 once complete"
 // @Failure      404  {string}  string  "Unknown job"
 // @Router       /analyze/{jobID}/status [get]
 func AnalyzeStatus(deps Deps) http.HandlerFunc {
@@ -346,7 +358,12 @@ func AnalyzeStatus(deps Deps) http.HandlerFunc {
 
 		if status == "complete" {
 			if slug, ok := reportSlugForJob(r.Context(), deps, jobID); ok {
-				w.Header().Set("HX-Redirect", "/report/"+slug)
+				// ?new=1 is the signal the report page's JS uses to record this
+				// report into the anonymous "recent on this device" localStorage
+				// list — it distinguishes "I just created this" from "I'm
+				// viewing a link someone shared," then strips itself from the
+				// URL bar.
+				w.Header().Set("HX-Redirect", "/report/"+slug+"?new=1")
 				w.WriteHeader(http.StatusOK)
 				return
 			}
@@ -488,6 +505,7 @@ func runAnalysisPipeline(deps Deps, jobID uuid.UUID, userID *uuid.UUID, extractD
 		failJob(ctx, deps, jobID, "analysis failed, please try again")
 		return
 	}
+	result.GeneratedFiles = generator.GenerateFiles(result)
 
 	report, err := saveReport(ctx, deps, jobID, userID, result)
 	if err != nil {

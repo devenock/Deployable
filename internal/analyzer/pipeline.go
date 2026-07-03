@@ -68,8 +68,10 @@ func RunWithProgress(ctx context.Context, dir string, claudeClient ClaudeClient,
 	// documented 6-step model.
 
 	onProgress(6, "Generating deployment files")
-	// Layer 3 (deployment file generation) lands in a later phase.
-	result.GeneratedFiles = map[string]string{}
+	// Actual file generation happens in the caller (internal/generator),
+	// which imports analyzer's types — analyzer can't import generator
+	// without creating a cycle. GeneratedFiles is populated by the caller
+	// right after RunWithProgress returns.
 
 	return result, nil
 }
