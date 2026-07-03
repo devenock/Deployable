@@ -1,0 +1,37 @@
+{{define "email-otp"}}
+<!DOCTYPE html>
+<html lang="en">
+<body style="margin:0;padding:0;background:#0b0f14;font-family:-apple-system,Segoe UI,Roboto,sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#0b0f14;padding:32px 0;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="480" cellpadding="0" cellspacing="0" style="background:#171d26;border:1px solid #232b36;border-radius:12px;padding:32px;">
+          <tr>
+            <td>
+              <p style="margin:0 0 24px;font-size:20px;font-weight:600;color:#ffffff;">
+                Deploy<span style="color:#6366f1;">able</span>
+              </p>
+              <p style="margin:0 0 8px;font-size:16px;color:#e5e7eb;">Hi {{.Name}},</p>
+              <p style="margin:0 0 24px;font-size:14px;line-height:1.6;color:#9ca3af;">
+                Use the code below to verify your email address and activate your account.
+                This code expires in {{.ExpiresInMinutes}} minutes.
+              </p>
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td align="center" style="padding:20px;background:#0b0f14;border:1px solid #232b36;border-radius:8px;">
+                    <span style="font-size:32px;font-weight:700;letter-spacing:8px;color:#6366f1;">{{.Code}}</span>
+                  </td>
+                </tr>
+              </table>
+              <p style="margin:24px 0 0;font-size:13px;line-height:1.6;color:#6b7280;">
+                If you didn't request this, you can safely ignore this email.
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+{{end}}

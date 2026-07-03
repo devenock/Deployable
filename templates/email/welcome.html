@@ -1,0 +1,53 @@
+{{define "email-welcome"}}
+<!DOCTYPE html>
+<html lang="en">
+<body style="margin:0;padding:0;background:#0b0f14;font-family:-apple-system,Segoe UI,Roboto,sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#0b0f14;padding:32px 0;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="480" cellpadding="0" cellspacing="0" style="background:#171d26;border:1px solid #232b36;border-radius:12px;padding:32px;">
+          <tr>
+            <td>
+              <p style="margin:0 0 24px;font-size:20px;font-weight:600;color:#ffffff;">
+                Deploy<span style="color:#6366f1;">able</span>
+              </p>
+              <p style="margin:0 0 8px;font-size:18px;font-weight:600;color:#e5e7eb;">Welcome, {{.Name}} 👋</p>
+              <p style="margin:0 0 24px;font-size:14px;line-height:1.6;color:#9ca3af;">
+                Your account is verified and ready. Here's how to get your first
+                deployment readiness report:
+              </p>
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px;">
+                <tr>
+                  <td style="padding:8px 0;font-size:14px;color:#e5e7eb;">
+                    <strong style="color:#6366f1;">1.</strong> Upload a project as a ZIP, paste a GitHub URL, or run the CLI
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:8px 0;font-size:14px;color:#e5e7eb;">
+                    <strong style="color:#6366f1;">2.</strong> We scan for security issues, missing config, and stack details
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:8px 0;font-size:14px;color:#e5e7eb;">
+                    <strong style="color:#6366f1;">3.</strong> Get a readiness score, resource estimates, and generated deployment files
+                  </td>
+                </tr>
+              </table>
+              <table role="presentation" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td style="border-radius:8px;background:#6366f1;">
+                    <a href="{{.AppURL}}" style="display:inline-block;padding:12px 24px;font-size:14px;font-weight:600;color:#ffffff;text-decoration:none;">
+                      Start your first analysis
+                    </a>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+{{end}}
