@@ -1,0 +1,58 @@
+{{define "landing"}}
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+{{template "head" .}}
+</head>
+<body class="bg-editor-bg text-gray-100 min-h-screen">
+{{template "nav" .}}
+{{template "flash" .}}
+
+<main class="max-w-5xl mx-auto px-4 py-20 text-center">
+  <h1 class="text-4xl sm:text-5xl font-bold text-white tracking-tight">
+    From vibe to production.<br>
+    <span class="text-brand">Know before you ship.</span>
+  </h1>
+  <p class="mt-6 max-w-2xl mx-auto text-lg text-gray-400">
+    Deployable analyzes your codebase for security gaps, missing config, and
+    production readiness — then tells you exactly what to fix and where to
+    deploy, before you find out the hard way.
+  </p>
+
+  <div class="mt-10 flex items-center justify-center gap-4">
+    <a href="/register" class="rounded-md bg-brand px-6 py-3 text-white font-medium hover:opacity-90">
+      Get Started
+    </a>
+    <a href="/login" class="rounded-md border border-editor-border px-6 py-3 text-gray-200 font-medium hover:bg-editor-surface">
+      Sign In
+    </a>
+  </div>
+
+  <div class="mt-16 grid gap-6 sm:grid-cols-3 text-left">
+    <div class="rounded-lg border border-editor-border bg-editor-card p-6">
+      <div class="text-2xl">📦</div>
+      <h3 class="mt-3 font-semibold text-white">Upload a ZIP</h3>
+      <p class="mt-2 text-sm text-gray-400">
+        Drop your project as a zip file. No account required, no repo access needed.
+      </p>
+    </div>
+    <div class="rounded-lg border border-editor-border bg-editor-card p-6">
+      <div class="text-2xl">🐙</div>
+      <h3 class="mt-3 font-semibold text-white">Paste a GitHub URL</h3>
+      <p class="mt-2 text-sm text-gray-400">
+        Public repos analyzed instantly. Private repos supported via GitHub OAuth.
+      </p>
+    </div>
+    <div class="rounded-lg border border-editor-border bg-editor-card p-6">
+      <div class="text-2xl">💻</div>
+      <h3 class="mt-3 font-semibold text-white">Use the CLI</h3>
+      <p class="mt-2 text-sm text-gray-400">
+        Run <code class="text-brand">deployable .</code> in any project directory for
+        a colored terminal report, CI-friendly.
+      </p>
+    </div>
+  </div>
+</main>
+</body>
+</html>
+{{end}}
