@@ -233,7 +233,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "Progress partial, or HX-Redirect to /report/{slug} once complete",
+                        "description": "Progress partial, or HX-Redirect to /report/{slug}?new=1 once complete",
                         "schema": {
                             "type": "string"
                         }
@@ -539,20 +539,37 @@ const docTemplate = `{
         },
         "/dashboard": {
             "get": {
-                "description": "Requires a valid session_id cookie. Saved reports list lands in Phase 5.",
+                "description": "Requires a session cookie. Lists the caller's reports, most recent first, with search (matches source, language, or framework) and pagination. Requests carrying the HX-Request header (search/pagination) get just the results partial; everything else gets the full page.",
+                "produces": [
+                    "text/html"
+                ],
                 "tags": [
                     "web"
                 ],
-                "summary": "Dashboard (stub)",
+                "summary": "Dashboard — your reports",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Filter by source, language, or framework",
+                        "name": "search",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page number, 1-indexed",
+                        "name": "page",
+                        "in": "query"
+                    }
+                ],
                 "responses": {
-                    "303": {
-                        "description": "No valid session — redirects to /login",
+                    "200": {
+                        "description": "HTML page or partial",
                         "schema": {
                             "type": "string"
                         }
                     },
-                    "501": {
-                        "description": "not implemented",
+                    "303": {
+                        "description": "No valid session — redirects to /login",
                         "schema": {
                             "type": "string"
                         }
@@ -812,7 +829,7 @@ const docTemplate = `{
         },
         "/report/{slug}": {
             "get": {
-                "description": "Renders the full deployment readiness report for a public slug: readiness score, detected stack, secret findings, infrastructure gaps, Claude's semantic analysis, resource estimates, and platform recommendations. Anonymous-submitted reports expire after 7 days; logged-in users' reports are permanent.",
+                "description": "Renders the full deployment readiness report for a public slug: readiness score, detected stack, secret findings, infrastructure gaps, Claude's semantic analysis, resource estimates, platform recommendations, and generated deployment files. Anonymous-submitted reports expire after 7 days; logged-in users' reports are permanent. Owners additionally see rescan (GitHub-sourced only) and delete actions.",
                 "produces": [
                     "text/html"
                 ],
@@ -838,6 +855,118 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Unknown or expired report",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Requires a session cookie and ownership of the report. A report that doesn't exist and one that isn't yours are indistinguishable (both 404) to avoid leaking which slugs exist.",
+                "tags": [
+                    "web"
+                ],
+                "summary": "Delete a report",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Report slug",
+                        "name": "slug",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Deleted",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "Unknown report, or not the owner",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/report/{slug}/download": {
+            "get": {
+                "description": "Zips the report's generated_files (Dockerfile, docker-compose.yml, .env.example, CI workflow, DEPLOYMENT.md, and platform config where applicable) and streams it as an attachment. Same access rule as viewing the report — no additional ownership check.",
+                "produces": [
+                    "application/zip"
+                ],
+                "tags": [
+                    "web"
+                ],
+                "summary": "Download a report's generated deployment files",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Report slug",
+                        "name": "slug",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "deployable-\u003cslug\u003e.zip",
+                        "schema": {
+                            "type": "file"
+                        }
+                    },
+                    "404": {
+                        "description": "Unknown/expired report, or no generated files",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/report/{slug}/rescan": {
+            "post": {
+                "description": "Requires a session cookie and ownership of the report. Only GitHub-sourced reports can be rescanned (re-fetching a URL is cheap and idempotent) — ZIP-sourced reports aren't, since the original upload isn't retained after analysis. Re-fetches the same repository and kicks off a fresh analysis job, identical to submitting the URL again.",
+                "produces": [
+                    "text/html"
+                ],
+                "tags": [
+                    "web"
+                ],
+                "summary": "Re-run analysis for a GitHub-sourced report",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Report slug",
+                        "name": "slug",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "HX-Redirect header points to /analyze/{jobID}/processing",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "403": {
+                        "description": "Not the owner, or not a GitHub-sourced report",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "Unknown report",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "429": {
+                        "description": "Rate limit exceeded",
                         "schema": {
                             "type": "string"
                         }
