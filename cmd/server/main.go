@@ -161,14 +161,17 @@ func main() {
 	// Public report view
 	r.Get("/report/{slug}", handlers.ReportView(deps))
 
-	// Analyze — public (anonymous analysis is allowed per ARCHITECTURE.md),
-	// rate-limited by IP; OptionalAuth attaches a user to the job/report
-	// when a session cookie happens to be present, without requiring one.
+	// Analyze — public (anonymous analysis is allowed per ARCHITECTURE.md).
+	// OptionalAuth attaches a user to the job/report when a session cookie
+	// happens to be present, without requiring one. RateLimit is applied
+	// only to the action that starts a new analysis (POST /analyze/zip) —
+	// not to viewing the page or polling an already-started job's status,
+	// which HTMX does every 2s and would otherwise exhaust the hourly quota
+	// within seconds of a single analysis starting.
 	r.Group(func(r chi.Router) {
 		r.Use(middleware.OptionalAuth(pool, rdb))
-		r.Use(middleware.RateLimit(rdb))
 		r.Get("/analyze", handlers.AnalyzePage(deps))
-		r.Post("/analyze/zip", handlers.AnalyzeZip(deps))
+		r.With(middleware.RateLimit(rdb)).Post("/analyze/zip", handlers.AnalyzeZip(deps))
 		r.Get("/analyze/{jobID}/status", handlers.AnalyzeStatus(deps))
 		r.Get("/analyze/{jobID}/processing", handlers.ProcessingPage(deps))
 	})
@@ -179,11 +182,11 @@ func main() {
 		r.Get("/dashboard", handlers.Dashboard(deps))
 	})
 
-	// REST API for CLI
+	// REST API for CLI — same rationale as the web /analyze group: only the
+	// action that starts a new analysis is rate-limited, not status polling.
 	r.Route("/api/v1", func(r chi.Router) {
 		r.Use(middleware.RequireAPIKey(pool, rdb))
-		r.Use(middleware.RateLimit(rdb))
-		r.Post("/analyze", handlers.APIAnalyze(deps))
+		r.With(middleware.RateLimit(rdb)).Post("/analyze", handlers.APIAnalyze(deps))
 		r.Get("/analyze/{jobID}", handlers.APIAnalyzeStatus(deps))
 	})
 
