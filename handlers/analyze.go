@@ -62,19 +62,23 @@ func AnalyzePage(deps Deps) http.HandlerFunc {
 		maxBytes := envInt64("MAX_UPLOAD_BYTES", defaultMaxUploadBytes)
 
 		hasGitHub := false
+		hasAPIKey := false
 		if user != nil {
 			if _, err := models.GetGitHubToken(r.Context(), deps.Pool, user.ID); err == nil {
 				hasGitHub = true
 			}
+			hasAPIKey, _ = models.HasAPIKey(r.Context(), deps.Pool, user.ID)
 		}
 
 		deps.Render(w, "analyze-index", map[string]any{
 			"Title":              "Analyze",
 			"User":               user,
+			"AppURL":             deps.AppURL,
 			"MaxUpload":          maxBytes / (1024 * 1024),
 			"HasGitHubConnected": hasGitHub,
 			"GitHubConnected":    r.URL.Query().Get("github_connected") == "1",
 			"OAuthError":         r.URL.Query().Get("oauth_error") == "1",
+			"HasAPIKey":          hasAPIKey,
 		})
 	}
 }
@@ -91,68 +95,75 @@ func AnalyzePage(deps Deps) http.HandlerFunc {
 // @Router       /analyze/zip [post]
 func AnalyzeZip(deps Deps) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		maxBytes := envInt64("MAX_UPLOAD_BYTES", defaultMaxUploadBytes)
-		r.Body = http.MaxBytesReader(w, r.Body, maxBytes)
-
-		if err := r.ParseMultipartForm(32 << 20); err != nil {
-			var maxBytesErr *http.MaxBytesError
-			if errors.As(err, &maxBytesErr) {
-				http.Error(w, fmt.Sprintf(
-					"Your zip exceeds the %dMB upload limit. Try excluding node_modules, vendor, .git, dist, or build directories before zipping — they're not needed for analysis anyway.",
-					maxBytes/(1024*1024),
-				), http.StatusRequestEntityTooLarge)
-				return
-			}
-			http.Error(w, "Invalid or corrupted zip upload", http.StatusBadRequest)
-			return
-		}
-
-		file, header, err := r.FormFile("file")
-		if err != nil {
-			http.Error(w, "Missing file", http.StatusBadRequest)
-			return
-		}
-		defer file.Close()
-
-		if !strings.EqualFold(filepath.Ext(header.Filename), ".zip") {
-			http.Error(w, "File must be a .zip archive", http.StatusBadRequest)
-			return
-		}
-
 		var userID *uuid.UUID
 		if user, ok := middleware.UserFromContext(r.Context()); ok {
 			userID = &user.ID
 		}
 
-		job, err := models.CreateJob(r.Context(), deps.Pool, userID, "zip", header.Filename, clientIP(r))
-		if err != nil {
-			log.Printf("create job: %v", err)
-			http.Error(w, "could not start analysis", http.StatusInternalServerError)
+		job, status, msg := acceptZipUpload(w, r, deps, userID)
+		if status != 0 {
+			http.Error(w, msg, status)
 			return
 		}
-
-		extractDir := filepath.Join(tmpDir(), job.ID.String())
-		if err := os.MkdirAll(extractDir, 0755); err != nil {
-			log.Printf("mkdir extract dir: %v", err)
-			http.Error(w, "could not start analysis", http.StatusInternalServerError)
-			return
-		}
-
-		if err := extractZip(file, header.Size, extractDir, maxBytes); err != nil {
-			_ = os.RemoveAll(extractDir)
-			log.Printf("extract zip for job %s: %v", job.ID, err)
-			http.Error(w, "invalid zip file", http.StatusBadRequest)
-			return
-		}
-
-		analysisRoot := normalizeExtractRoot(extractDir)
-
-		setJobStatus(context.Background(), deps, job.ID, "pending")
-		go runAnalysisPipeline(deps, job.ID, userID, extractDir, analysisRoot)
 
 		w.Header().Set("HX-Redirect", "/analyze/"+job.ID.String()+"/processing")
 		w.WriteHeader(http.StatusOK)
 	}
+}
+
+// acceptZipUpload validates and extracts an uploaded zip, creates a job, and
+// kicks off the analysis pipeline in the background. Shared by the web
+// (AnalyzeZip) and API (APIAnalyze) entry points, which differ only in auth
+// requirements and response format — status == 0 means success.
+func acceptZipUpload(w http.ResponseWriter, r *http.Request, deps Deps, userID *uuid.UUID) (job *models.AnalysisJob, status int, userMsg string) {
+	maxBytes := envInt64("MAX_UPLOAD_BYTES", defaultMaxUploadBytes)
+	r.Body = http.MaxBytesReader(w, r.Body, maxBytes)
+
+	if err := r.ParseMultipartForm(32 << 20); err != nil {
+		var maxBytesErr *http.MaxBytesError
+		if errors.As(err, &maxBytesErr) {
+			return nil, http.StatusRequestEntityTooLarge, fmt.Sprintf(
+				"Your zip exceeds the %dMB upload limit. Try excluding node_modules, vendor, .git, dist, or build directories before zipping — they're not needed for analysis anyway.",
+				maxBytes/(1024*1024),
+			)
+		}
+		return nil, http.StatusBadRequest, "Invalid or corrupted zip upload"
+	}
+
+	file, header, err := r.FormFile("file")
+	if err != nil {
+		return nil, http.StatusBadRequest, "Missing file"
+	}
+	defer file.Close()
+
+	if !strings.EqualFold(filepath.Ext(header.Filename), ".zip") {
+		return nil, http.StatusBadRequest, "File must be a .zip archive"
+	}
+
+	j, err := models.CreateJob(r.Context(), deps.Pool, userID, "zip", header.Filename, clientIP(r))
+	if err != nil {
+		log.Printf("create job: %v", err)
+		return nil, http.StatusInternalServerError, "could not start analysis"
+	}
+
+	extractDir := filepath.Join(tmpDir(), j.ID.String())
+	if err := os.MkdirAll(extractDir, 0755); err != nil {
+		log.Printf("mkdir extract dir: %v", err)
+		return nil, http.StatusInternalServerError, "could not start analysis"
+	}
+
+	if err := extractZip(file, header.Size, extractDir, maxBytes); err != nil {
+		_ = os.RemoveAll(extractDir)
+		log.Printf("extract zip for job %s: %v", j.ID, err)
+		return nil, http.StatusBadRequest, "invalid zip file"
+	}
+
+	analysisRoot := normalizeExtractRoot(extractDir)
+
+	setJobStatus(context.Background(), deps, j.ID, "pending")
+	go runAnalysisPipeline(deps, j.ID, userID, extractDir, analysisRoot)
+
+	return j, 0, ""
 }
 
 // AnalyzeGitHub godoc
