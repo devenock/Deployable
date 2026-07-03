@@ -1,0 +1,97 @@
+{{define "repo-details"}}
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+{{template "head" .}}
+</head>
+<body class="bg-editor-bg text-gray-100 min-h-screen font-sans antialiased">
+{{template "app-sidebar" .}}
+
+<div class="sm:pl-64">
+  {{template "app-topbar" .}}
+  {{template "flash" .}}
+
+  <main class="max-w-3xl mx-auto px-4 sm:px-8 py-8">
+    <a href="/dashboard" data-dash-nav-trigger="dashboard" class="inline-flex items-center gap-1.5 text-sm text-gray-400 hover:text-white transition-colors">
+      ← Back to dashboard
+    </a>
+
+    {{$r := .Repo}}
+    <div class="mt-4 rounded-xl border border-editor-border bg-editor-card/60 p-5">
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div class="min-w-0">
+          <div class="flex items-center gap-2">
+            <h1 class="text-xl font-bold text-white truncate">{{$r.FullName}}</h1>
+            {{if $r.Private}}<span class="shrink-0 rounded-full border border-editor-border px-2 py-0.5 text-[10px] text-gray-500">private</span>{{end}}
+          </div>
+          <p class="mt-1 text-sm text-gray-400">
+            {{if $r.DefaultBranch}}Default branch: {{$r.DefaultBranch}} · {{end}}
+            {{if .Account}}via {{.Account.GitHubLogin}} · {{end}}
+            Added {{timeAgo $r.AddedAt}}
+          </p>
+        </div>
+        <div class="flex items-center gap-2 shrink-0">
+          <button type="button"
+                  hx-post="/analyze/github" hx-vals='{"url": "github.com/{{$r.FullName}}"}' hx-swap="none"
+                  class="inline-flex items-center justify-center rounded-md bg-brand px-4 py-2 text-sm font-medium text-white shadow-lg shadow-brand/20 hover:bg-indigo-500 transition-colors">
+            Analyze
+          </button>
+          <button type="button" aria-label="Remove from watchlist"
+                  hx-delete="/account/github/repos/{{$r.ID}}" hx-swap="none"
+                  hx-confirm="Remove this repository from your watchlist? Past reports for it aren't affected."
+                  hx-on::after-request="if(event.detail.successful) window.location='/dashboard'"
+                  class="inline-flex items-center justify-center rounded-md border border-danger/30 bg-danger/5 px-3 py-2 text-sm font-medium text-danger hover:bg-danger/10 transition-colors">
+            {{template "icon-trash" .}}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="mt-8">
+      <h2 class="text-sm font-semibold uppercase tracking-wide text-gray-400">Report history</h2>
+
+      {{if .Reports}}
+      <div class="mt-3 space-y-3">
+        {{range .Reports}}
+        <div data-report-row class="rounded-lg border border-editor-border bg-editor-card p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div class="min-w-0 flex-1">
+            <div class="flex items-center gap-2">
+              <a href="/report/{{.Slug}}" class="font-medium text-white hover:text-brand transition-colors">Report</a>
+              <span class="shrink-0 rounded-full border border-editor-border px-2 py-0.5 text-[10px] uppercase tracking-wide text-gray-500">{{.InputType}}</span>
+            </div>
+            <p class="mt-1 text-xs text-gray-500">
+              {{if .Language}}{{.Language}}{{else}}Unknown stack{{end}}{{if .Framework}} · {{.Framework}}{{end}} · Analyzed {{timeAgo .CreatedAt}}
+            </p>
+          </div>
+          <div class="flex items-center gap-2 shrink-0">
+            <span class="w-10 text-center text-sm font-semibold {{scoreColor .ReadinessScore}}">{{.ReadinessScore}}</span>
+            <a href="/report/{{.Slug}}"
+               class="rounded-md border border-editor-border bg-editor-bg px-3 py-1.5 text-xs text-gray-300 hover:bg-editor-surface transition-colors">
+              View
+            </a>
+            <button type="button" aria-label="Delete"
+                    hx-delete="/report/{{.Slug}}" hx-target="closest [data-report-row]" hx-swap="outerHTML swap:0.2s"
+                    hx-confirm="Delete this report? This can't be undone."
+                    class="rounded-md border border-danger/30 bg-danger/5 p-1.5 text-danger hover:bg-danger/10 transition-colors">
+              {{template "icon-trash" $}}
+            </button>
+          </div>
+        </div>
+        {{end}}
+      </div>
+      {{else}}
+      <div class="mt-3 rounded-xl border border-dashed border-editor-border bg-editor-card/50 px-6 py-16 text-center">
+        <p class="text-gray-400">No reports yet for this repo.</p>
+        <button type="button"
+                hx-post="/analyze/github" hx-vals='{"url": "github.com/{{$r.FullName}}"}' hx-swap="none"
+                class="mt-3 text-sm text-brand hover:underline">
+          Analyze it now →
+        </button>
+      </div>
+      {{end}}
+    </div>
+  </main>
+</div>
+</body>
+</html>
+{{end}}

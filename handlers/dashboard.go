@@ -67,6 +67,10 @@ func Dashboard(deps Deps) http.HandlerFunc {
 		if err != nil {
 			log.Printf("list connected repos for dashboard: %v", err)
 		}
+		githubAccounts, err := models.ListGitHubAccounts(r.Context(), deps.Pool, user.ID)
+		if err != nil {
+			log.Printf("list github accounts for dashboard: %v", err)
+		}
 		stats, err := models.GetReportStats(r.Context(), deps.Pool, user.ID)
 		if err != nil {
 			log.Printf("get report stats for dashboard: %v", err)
@@ -91,6 +95,7 @@ func Dashboard(deps Deps) http.HandlerFunc {
 			}
 		}
 		data["ConnectedRepos"] = connectedRepos
+		data["GitHubAccounts"] = githubAccounts
 		data["Stats"] = stats
 		data["ActiveNav"] = activeNav
 
