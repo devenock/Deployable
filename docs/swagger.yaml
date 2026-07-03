@@ -1,0 +1,275 @@
+basePath: /
+definitions:
+  handlers.ErrorResponse:
+    properties:
+      error:
+        example: invalid or missing API key
+        type: string
+    type: object
+  handlers.HealthResponse:
+    properties:
+      postgres:
+        example: ok
+        type: string
+      redis:
+        example: ok
+        type: string
+      status:
+        example: ok
+        type: string
+      version:
+        example: dev
+        type: string
+    type: object
+host: localhost:8080
+info:
+  contact:
+    name: Deployable
+  description: Deployment Readiness Platform — Phase 1 (Foundation) API surface. Endpoints
+    marked 501 are intentional stubs; full implementations land in later phases (see
+    the description on each operation for which phase).
+  title: Deployable API
+  version: 0.1.0-phase1
+paths:
+  /:
+    get:
+      description: Public marketing landing page.
+      produces:
+      - text/html
+      responses:
+        "200":
+          description: HTML page
+          schema:
+            type: string
+      summary: Landing page
+      tags:
+      - web
+  /analyze:
+    get:
+      description: Requires a valid session_id cookie (checked against Redis first,
+        Postgres on cache miss). Full zip/GitHub/CLI input handling and the processing
+        pipeline land in Phase 2 — this stub proves auth and routing work end to end.
+      responses:
+        "303":
+          description: No valid session — redirects to /login
+          schema:
+            type: string
+        "501":
+          description: not implemented
+          schema:
+            type: string
+      summary: Analyze page (stub)
+      tags:
+      - web
+  /api/v1/analyze:
+    post:
+      description: Requires an X-API-Key header. The key is SHA-256 hashed and checked
+        against Redis first, then Postgres (users.api_key_hash) on a cache miss. Subject
+        to Redis-backed rate limiting (default 5/hour, keyed on the X-Real-IP header
+        set by Caddy). Full submission handling lands in Phase 4.
+      produces:
+      - application/json
+      responses:
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "501":
+          description: not implemented
+          schema:
+            type: string
+      security:
+      - ApiKeyAuth: []
+      summary: Submit an analysis (stub)
+      tags:
+      - api
+  /api/v1/analyze/{jobID}:
+    get:
+      description: Requires an X-API-Key header. Job status polling lands in Phase
+        4.
+      parameters:
+      - description: Analysis job ID
+        in: path
+        name: jobID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "501":
+          description: not implemented
+          schema:
+            type: string
+      security:
+      - ApiKeyAuth: []
+      summary: Get analysis job status (stub)
+      tags:
+      - api
+  /dashboard:
+    get:
+      description: Requires a valid session_id cookie. Saved reports list lands in
+        Phase 5.
+      responses:
+        "303":
+          description: No valid session — redirects to /login
+          schema:
+            type: string
+        "501":
+          description: not implemented
+          schema:
+            type: string
+      summary: Dashboard (stub)
+      tags:
+      - web
+  /health:
+    get:
+      description: Pings Postgres and Redis and reports overall status. Used by Docker
+        healthchecks and uptime monitoring.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.HealthResponse'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/handlers.HealthResponse'
+      summary: Health check
+      tags:
+      - system
+  /login:
+    get:
+      produces:
+      - text/html
+      responses:
+        "200":
+          description: HTML form
+          schema:
+            type: string
+      summary: Login form
+      tags:
+      - auth
+    post:
+      consumes:
+      - application/x-www-form-urlencoded
+      description: Validates credentials against the stored bcrypt hash. On success
+        creates a session and sets the session_id cookie. On failure (unknown email
+        or wrong password) re-renders the login form with a generic "Invalid email
+        or password" error — no session is created and which field was wrong is never
+        disclosed.
+      parameters:
+      - description: Email address
+        in: formData
+        name: email
+        required: true
+        type: string
+      - description: Password
+        in: formData
+        name: password
+        required: true
+        type: string
+      produces:
+      - text/html
+      responses:
+        "200":
+          description: Invalid credentials — form re-rendered with error, no session
+            created
+          schema:
+            type: string
+        "303":
+          description: 'Redirects to /analyze; Set-Cookie: session_id=...'
+          schema:
+            type: string
+      summary: Sign in
+      tags:
+      - auth
+  /logout:
+    post:
+      description: Deletes the session from Postgres and Redis, clears the session_id
+        cookie (Max-Age=0), and redirects to /login. Requires a session_id cookie.
+      responses:
+        "303":
+          description: Redirects to /login; cookie cleared
+          schema:
+            type: string
+      summary: Sign out
+      tags:
+      - auth
+  /register:
+    get:
+      produces:
+      - text/html
+      responses:
+        "200":
+          description: HTML form
+          schema:
+            type: string
+      summary: Registration form
+      tags:
+      - auth
+    post:
+      consumes:
+      - application/x-www-form-urlencoded
+      description: Validates name/email/password (min 8 chars), bcrypt-hashes the
+        password (cost 12), creates the user and an initial session, and sets the
+        session_id cookie (HttpOnly, SameSite=Lax, 30-day expiry). Duplicate emails
+        and validation failures re-render the form with 200 and an inline error instead
+        of an HTTP error status.
+      parameters:
+      - description: Full name
+        in: formData
+        name: name
+        required: true
+        type: string
+      - description: Email address
+        in: formData
+        name: email
+        required: true
+        type: string
+      - description: Password, minimum 8 characters
+        in: formData
+        name: password
+        required: true
+        type: string
+      produces:
+      - text/html
+      responses:
+        "200":
+          description: Validation failed or email already registered — form re-rendered
+            with error
+          schema:
+            type: string
+        "303":
+          description: 'Redirects to /analyze; Set-Cookie: session_id=...'
+          schema:
+            type: string
+      summary: Create an account
+      tags:
+      - auth
+schemes:
+- http
+- https
+securityDefinitions:
+  ApiKeyAuth:
+    description: Per-user API key (Phase 4 issues these). SHA-256 hash is checked
+      against users.api_key_hash. Session-cookie-protected web routes (/analyze, /dashboard,
+      /logout) are documented per-operation since Swagger 2.0 has no cookie security
+      scheme.
+    in: header
+    name: X-API-Key
+    type: apiKey
+swagger: "2.0"

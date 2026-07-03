@@ -15,10 +15,12 @@ import (
 	"github.com/go-chi/chi/v5"
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
 	"github.com/joho/godotenv"
+	httpSwagger "github.com/swaggo/http-swagger"
 
 	assets "deployable"
 	"deployable/cache"
 	"deployable/db"
+	_ "deployable/docs"
 	"deployable/handlers"
 	"deployable/middleware"
 )
@@ -27,6 +29,17 @@ var embeddedFiles = assets.Files
 
 var version = "dev"
 
+// @title                       Deployable API
+// @version                     0.1.0-phase1
+// @description                 Deployment Readiness Platform — Phase 1 (Foundation) API surface. Endpoints marked 501 are intentional stubs; full implementations land in later phases (see the description on each operation for which phase).
+// @contact.name                Deployable
+// @host                        localhost:8080
+// @BasePath                    /
+// @schemes                     http https
+// @securityDefinitions.apikey  ApiKeyAuth
+// @in                          header
+// @name                        X-API-Key
+// @description                 Per-user API key (Phase 4 issues these). SHA-256 hash is checked against users.api_key_hash. Session-cookie-protected web routes (/analyze, /dashboard, /logout) are documented per-operation since Swagger 2.0 has no cookie security scheme.
 func main() {
 	_ = godotenv.Load()
 
@@ -104,8 +117,8 @@ func main() {
 	// Health check
 	r.Get("/health", handlers.HealthHandler(pool, rdb, version))
 
-	// API docs (Swagger UI, backed by /static/openapi.yaml)
-	r.Get("/docs", handlers.DocsHandler(deps))
+	// API docs (Swagger UI, generated from handler annotations via swaggo/swag)
+	r.Get("/docs/*", httpSwagger.Handler(httpSwagger.URL("/docs/doc.json")))
 
 	// Public routes
 	r.Get("/", handlers.LandingHandler(deps))
