@@ -4,21 +4,30 @@
 <head>
 {{template "head" .}}
 </head>
-<body class="bg-editor-bg text-gray-100 min-h-screen">
+<body class="bg-editor-bg text-gray-100 min-h-screen font-sans antialiased">
 {{template "nav" .}}
 
-<main class="max-w-md mx-auto px-4 py-20">
-  <h1 class="text-2xl font-semibold text-white text-center">Analyzing your project</h1>
+<section class="relative overflow-hidden min-h-screen flex items-center">
+  <div class="absolute inset-0 bg-grid -z-10"></div>
+  <div class="glow -z-10 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-72 w-72 bg-brand/15"></div>
 
-  <div id="status-container"
-       class="mt-8"
-       hx-get="/analyze/{{.JobID}}/status"
-       hx-trigger="every 2s"
-       hx-swap="innerHTML"
-       hx-target="#status-container">
-    {{template "analyze-steps" .}}
+  <div class="w-full max-w-md mx-auto px-4 py-16">
+    <div class="text-center">
+      <h1 class="fade-up text-2xl font-semibold text-white">Analyzing your project</h1>
+      <p class="fade-up mt-1.5 text-sm text-gray-400 [animation-delay:60ms]">This usually takes under a minute.</p>
+    </div>
+
+    <div class="fade-up mt-7 rounded-xl border border-editor-border bg-editor-card/90 backdrop-blur-sm p-6 sm:p-7 shadow-2xl shadow-black/40 [animation-delay:120ms]">
+      <div id="status-container"
+           hx-get="/analyze/{{.JobID}}/status"
+           hx-trigger="every 2s"
+           hx-swap="innerHTML"
+           hx-target="#status-container">
+        {{template "analyze-steps" .}}
+      </div>
+    </div>
   </div>
-</main>
+</section>
 </body>
 </html>
 {{end}}

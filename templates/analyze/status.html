@@ -2,17 +2,29 @@
      processing page and as the response body of every /analyze/{jobID}/status
      poll, so the two never visually diverge. */}}
 {{define "analyze-steps"}}
-<div class="space-y-3">
-  {{$current := .CurrentStep}}
+{{$current := .CurrentStep}}
+{{$total := len .Steps}}
+<div class="mb-5 h-1.5 w-full overflow-hidden rounded-full bg-editor-border">
+  <div class="h-full rounded-full bg-brand transition-all duration-500 ease-out" style="width: {{percent $current $total}}%"></div>
+</div>
+
+<div class="space-y-3.5">
   {{range $i, $step := .Steps}}
-  <div class="flex items-center gap-3 {{if lt (add $i 1) $current}}text-success{{else if eq (add $i 1) $current}}text-brand{{else}}text-gray-500{{end}}">
-    <span class="w-5 text-center">
-      {{if lt (add $i 1) $current}}✓{{else if eq (add $i 1) $current}}⟳{{else}}○{{end}}
+  <div class="flex items-center gap-3 text-sm {{if lt (add $i 1) $current}}text-success{{else if eq (add $i 1) $current}}text-white{{else}}text-gray-500{{end}}">
+    <span class="flex h-5 w-5 shrink-0 items-center justify-center">
+      {{if lt (add $i 1) $current}}
+        {{template "icon-check-circle" $}}
+      {{else if eq (add $i 1) $current}}
+        {{template "icon-spinner" $}}
+      {{else}}
+        <span class="h-1.5 w-1.5 rounded-full bg-gray-600"></span>
+      {{end}}
     </span>
     <span>{{$step}}</span>
   </div>
   {{end}}
 </div>
+
 {{if .Failed}}
 <div class="mt-6 rounded-md border border-danger/40 bg-danger/10 px-4 py-3 text-sm text-danger">
   {{.StepMessage}}
