@@ -3,6 +3,7 @@ package models
 import (
 	"context"
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -188,6 +189,36 @@ func CreateGoogleUser(ctx context.Context, pool *pgxpool.Pool, email, name, goog
 		return nil, fmt.Errorf("create google user: %w", err)
 	}
 	return u, nil
+}
+
+// GenerateAPIKey creates a new random API key (returned once, in plaintext)
+// and stores only its SHA-256 hash — the same one-way check
+// middleware.RequireAPIKey performs. Overwrites any existing key, so
+// regenerating immediately invalidates the previous one.
+func GenerateAPIKey(ctx context.Context, pool *pgxpool.Pool, userID uuid.UUID) (rawKey string, err error) {
+	b := make([]byte, 24)
+	if _, err := rand.Read(b); err != nil {
+		return "", fmt.Errorf("generate api key: %w", err)
+	}
+	rawKey = "dpl_" + hex.EncodeToString(b)
+
+	sum := sha256.Sum256([]byte(rawKey))
+	hash := hex.EncodeToString(sum[:])
+
+	if _, err := pool.Exec(ctx, `UPDATE users SET api_key_hash = $1, updated_at = NOW() WHERE id = $2`, hash, userID); err != nil {
+		return "", fmt.Errorf("store api key hash: %w", err)
+	}
+	return rawKey, nil
+}
+
+// HasAPIKey reports whether the user has generated an API key.
+func HasAPIKey(ctx context.Context, pool *pgxpool.Pool, userID uuid.UUID) (bool, error) {
+	var hash *string
+	err := pool.QueryRow(ctx, `SELECT api_key_hash FROM users WHERE id = $1`, userID).Scan(&hash)
+	if err != nil {
+		return false, fmt.Errorf("check api key: %w", err)
+	}
+	return hash != nil && *hash != "", nil
 }
 
 // SetGitHubToken stores an encrypted GitHub token granting repo access,
