@@ -18,18 +18,27 @@ var ErrNotFound = errors.New("not found")
 
 // User mirrors the users table.
 type User struct {
-	ID             uuid.UUID
-	Email          string
-	Name           string
-	PasswordHash   string
-	GitHubID       *string
-	GitHubLogin    *string
-	GitHubToken    *string
-	APIKeyHash     *string
-	Plan           string
-	AnalysesCount  int
-	CreatedAt      time.Time
-	UpdatedAt      time.Time
+	ID              uuid.UUID
+	Email           string
+	Name            string
+	PasswordHash    string
+	GitHubID        *string
+	GitHubLogin     *string
+	GitHubToken     *string
+	GoogleID        *string
+	APIKeyHash      *string
+	Plan            string
+	AnalysesCount   int
+	EmailVerifiedAt *time.Time
+	WelcomedAt      *time.Time
+	LastLoginAt     *time.Time
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
+}
+
+// IsEmailVerified reports whether the user has completed OTP or OAuth email verification.
+func (u *User) IsEmailVerified() bool {
+	return u.EmailVerifiedAt != nil
 }
 
 // Session mirrors the sessions table.
@@ -40,35 +49,62 @@ type Session struct {
 	CreatedAt time.Time
 }
 
-// CreateUser inserts a new user with the given email, name, and bcrypt hash.
-func CreateUser(ctx context.Context, pool *pgxpool.Pool, email, name, passwordHash string) (*User, error) {
+const userColumns = `
+	id, email, name, password_hash, github_id, github_login, google_id,
+	plan, analyses_count, email_verified_at, welcomed_at, last_login_at,
+	created_at, updated_at
+`
+
+func scanUser(row pgx.Row) (*User, error) {
 	u := &User{}
-	err := pool.QueryRow(ctx, `
+	err := row.Scan(
+		&u.ID, &u.Email, &u.Name, &u.PasswordHash, &u.GitHubID, &u.GitHubLogin, &u.GoogleID,
+		&u.Plan, &u.AnalysesCount, &u.EmailVerifiedAt, &u.WelcomedAt, &u.LastLoginAt,
+		&u.CreatedAt, &u.UpdatedAt,
+	)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, ErrNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+	return u, nil
+}
+
+// CreateUser inserts a new, unverified user with the given email, name, and
+// bcrypt hash. email_verified_at is left NULL until OTP verification.
+func CreateUser(ctx context.Context, pool *pgxpool.Pool, email, name, passwordHash string) (*User, error) {
+	u, err := scanUser(pool.QueryRow(ctx, `
 		INSERT INTO users (email, name, password_hash)
 		VALUES ($1, $2, $3)
-		RETURNING id, email, name, password_hash, plan, analyses_count, created_at, updated_at
-	`, email, name, passwordHash).Scan(
-		&u.ID, &u.Email, &u.Name, &u.PasswordHash, &u.Plan, &u.AnalysesCount, &u.CreatedAt, &u.UpdatedAt,
-	)
+		RETURNING `+userColumns, email, name, passwordHash))
 	if err != nil {
 		return nil, fmt.Errorf("create user: %w", err)
 	}
 	return u, nil
 }
 
+// CreateOAuthUser inserts a new user from a trusted OAuth profile. The email
+// is considered pre-verified by the provider, so email_verified_at is set
+// immediately and no password is set.
+func CreateOAuthUser(ctx context.Context, pool *pgxpool.Pool, email, name string) (*User, error) {
+	u, err := scanUser(pool.QueryRow(ctx, `
+		INSERT INTO users (email, name, email_verified_at)
+		VALUES ($1, $2, NOW())
+		RETURNING `+userColumns, email, name))
+	if err != nil {
+		return nil, fmt.Errorf("create oauth user: %w", err)
+	}
+	return u, nil
+}
+
 // FindUserByEmail looks up a user by email.
 func FindUserByEmail(ctx context.Context, pool *pgxpool.Pool, email string) (*User, error) {
-	u := &User{}
-	err := pool.QueryRow(ctx, `
-		SELECT id, email, name, password_hash, plan, analyses_count, created_at, updated_at
-		FROM users WHERE email = $1
-	`, email).Scan(
-		&u.ID, &u.Email, &u.Name, &u.PasswordHash, &u.Plan, &u.AnalysesCount, &u.CreatedAt, &u.UpdatedAt,
-	)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, ErrNotFound
-	}
+	u, err := scanUser(pool.QueryRow(ctx, `SELECT `+userColumns+` FROM users WHERE email = $1`, email))
 	if err != nil {
+		if errors.Is(err, ErrNotFound) {
+			return nil, ErrNotFound
+		}
 		return nil, fmt.Errorf("find user by email: %w", err)
 	}
 	return u, nil
@@ -76,20 +112,125 @@ func FindUserByEmail(ctx context.Context, pool *pgxpool.Pool, email string) (*Us
 
 // FindUserByID looks up a user by ID.
 func FindUserByID(ctx context.Context, pool *pgxpool.Pool, id uuid.UUID) (*User, error) {
-	u := &User{}
-	err := pool.QueryRow(ctx, `
-		SELECT id, email, name, password_hash, plan, analyses_count, created_at, updated_at
-		FROM users WHERE id = $1
-	`, id).Scan(
-		&u.ID, &u.Email, &u.Name, &u.PasswordHash, &u.Plan, &u.AnalysesCount, &u.CreatedAt, &u.UpdatedAt,
-	)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, ErrNotFound
-	}
+	u, err := scanUser(pool.QueryRow(ctx, `SELECT `+userColumns+` FROM users WHERE id = $1`, id))
 	if err != nil {
+		if errors.Is(err, ErrNotFound) {
+			return nil, ErrNotFound
+		}
 		return nil, fmt.Errorf("find user by id: %w", err)
 	}
 	return u, nil
+}
+
+// FindUserByGitHubID looks up a user by their linked GitHub account ID.
+func FindUserByGitHubID(ctx context.Context, pool *pgxpool.Pool, githubID string) (*User, error) {
+	u, err := scanUser(pool.QueryRow(ctx, `SELECT `+userColumns+` FROM users WHERE github_id = $1`, githubID))
+	if err != nil {
+		if errors.Is(err, ErrNotFound) {
+			return nil, ErrNotFound
+		}
+		return nil, fmt.Errorf("find user by github id: %w", err)
+	}
+	return u, nil
+}
+
+// FindUserByGoogleID looks up a user by their linked Google account ID.
+func FindUserByGoogleID(ctx context.Context, pool *pgxpool.Pool, googleID string) (*User, error) {
+	u, err := scanUser(pool.QueryRow(ctx, `SELECT `+userColumns+` FROM users WHERE google_id = $1`, googleID))
+	if err != nil {
+		if errors.Is(err, ErrNotFound) {
+			return nil, ErrNotFound
+		}
+		return nil, fmt.Errorf("find user by google id: %w", err)
+	}
+	return u, nil
+}
+
+// LinkGitHubAccount attaches a GitHub account ID/login to an existing user
+// (used when an OAuth email matches an existing email/password account).
+func LinkGitHubAccount(ctx context.Context, pool *pgxpool.Pool, userID uuid.UUID, githubID, githubLogin string) error {
+	_, err := pool.Exec(ctx, `UPDATE users SET github_id = $1, github_login = $2, updated_at = NOW() WHERE id = $3`,
+		githubID, githubLogin, userID)
+	if err != nil {
+		return fmt.Errorf("link github account: %w", err)
+	}
+	return nil
+}
+
+// LinkGoogleAccount attaches a Google account ID to an existing user.
+func LinkGoogleAccount(ctx context.Context, pool *pgxpool.Pool, userID uuid.UUID, googleID string) error {
+	_, err := pool.Exec(ctx, `UPDATE users SET google_id = $1, updated_at = NOW() WHERE id = $2`, googleID, userID)
+	if err != nil {
+		return fmt.Errorf("link google account: %w", err)
+	}
+	return nil
+}
+
+// CreateGitHubUser inserts a new user from a trusted GitHub OAuth profile.
+func CreateGitHubUser(ctx context.Context, pool *pgxpool.Pool, email, name, githubID, githubLogin string) (*User, error) {
+	u, err := scanUser(pool.QueryRow(ctx, `
+		INSERT INTO users (email, name, github_id, github_login, email_verified_at)
+		VALUES ($1, $2, $3, $4, NOW())
+		RETURNING `+userColumns, email, name, githubID, githubLogin))
+	if err != nil {
+		return nil, fmt.Errorf("create github user: %w", err)
+	}
+	return u, nil
+}
+
+// CreateGoogleUser inserts a new user from a trusted Google OAuth profile.
+func CreateGoogleUser(ctx context.Context, pool *pgxpool.Pool, email, name, googleID string) (*User, error) {
+	u, err := scanUser(pool.QueryRow(ctx, `
+		INSERT INTO users (email, name, google_id, email_verified_at)
+		VALUES ($1, $2, $3, NOW())
+		RETURNING `+userColumns, email, name, googleID))
+	if err != nil {
+		return nil, fmt.Errorf("create google user: %w", err)
+	}
+	return u, nil
+}
+
+// MarkEmailVerified sets email_verified_at to now for the given user.
+func MarkEmailVerified(ctx context.Context, pool *pgxpool.Pool, userID uuid.UUID) error {
+	_, err := pool.Exec(ctx, `UPDATE users SET email_verified_at = NOW(), updated_at = NOW() WHERE id = $1`, userID)
+	if err != nil {
+		return fmt.Errorf("mark email verified: %w", err)
+	}
+	return nil
+}
+
+// UpdatePassword replaces a user's bcrypt hash (used by the reset-password flow).
+func UpdatePassword(ctx context.Context, pool *pgxpool.Pool, userID uuid.UUID, passwordHash string) error {
+	_, err := pool.Exec(ctx, `UPDATE users SET password_hash = $1, updated_at = NOW() WHERE id = $2`, passwordHash, userID)
+	if err != nil {
+		return fmt.Errorf("update password: %w", err)
+	}
+	return nil
+}
+
+// MarkWelcomed sets welcomed_at to now for the given user.
+func MarkWelcomed(ctx context.Context, pool *pgxpool.Pool, userID uuid.UUID) error {
+	_, err := pool.Exec(ctx, `UPDATE users SET welcomed_at = NOW(), updated_at = NOW() WHERE id = $1`, userID)
+	if err != nil {
+		return fmt.Errorf("mark welcomed: %w", err)
+	}
+	return nil
+}
+
+// RecordLogin sets last_login_at to now and reports whether this was the
+// user's first-ever successful login (last_login_at was previously NULL),
+// atomically, in a single round trip.
+func RecordLogin(ctx context.Context, pool *pgxpool.Pool, userID uuid.UUID) (isFirstLogin bool, err error) {
+	err = pool.QueryRow(ctx, `
+		WITH prev AS (SELECT last_login_at FROM users WHERE id = $1)
+		UPDATE users SET last_login_at = NOW(), updated_at = NOW()
+		WHERE id = $1
+		RETURNING (SELECT last_login_at FROM prev) IS NULL
+	`, userID).Scan(&isFirstLogin)
+	if err != nil {
+		return false, fmt.Errorf("record login: %w", err)
+	}
+	return isFirstLogin, nil
 }
 
 // CreateSession creates a new session row with a random session ID.
@@ -132,6 +273,16 @@ func DeleteSession(ctx context.Context, pool *pgxpool.Pool, id string) error {
 	_, err := pool.Exec(ctx, `DELETE FROM sessions WHERE id = $1`, id)
 	if err != nil {
 		return fmt.Errorf("delete session: %w", err)
+	}
+	return nil
+}
+
+// DeleteAllUserSessions removes every session belonging to a user (used when
+// a password is reset, to force re-authentication everywhere).
+func DeleteAllUserSessions(ctx context.Context, pool *pgxpool.Pool, userID uuid.UUID) error {
+	_, err := pool.Exec(ctx, `DELETE FROM sessions WHERE user_id = $1`, userID)
+	if err != nil {
+		return fmt.Errorf("delete all user sessions: %w", err)
 	}
 	return nil
 }
