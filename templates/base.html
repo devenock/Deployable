@@ -222,6 +222,13 @@
 </svg>
 {{end}}
 
+{{define "icon-reports"}}
+<svg class="h-[18px] w-[18px]" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M7 3.5h7l4 4V19a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 6 19V5A1.5 1.5 0 0 1 7 3.5Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+  <path d="M14 3.5V7a1 1 0 0 0 1 1h3.5M9 12.5h6M9 15.5h6M9 9.5h2.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+</svg>
+{{end}}
+
 {{/* app-sidebar: fixed left sidebar for authenticated app pages (dashboard
      and, later, other logged-in-only pages) — distinct from "nav", which is
      the horizontal marketing/auth nav. .ActiveNav ("dashboard" | "analyze")
@@ -244,6 +251,10 @@
     <a href="/dashboard?tab=analyze" data-dash-nav-trigger="analyze"
        class="flex items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-colors {{if eq .ActiveNav "analyze"}}bg-brand/10 text-brand font-medium{{else}}text-gray-400 hover:bg-editor-card hover:text-white{{end}}">
       {{template "icon-upload-cloud" .}} Analyze
+    </a>
+    <a href="/dashboard?tab=reports" data-dash-nav-trigger="reports"
+       class="flex items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-colors {{if eq .ActiveNav "reports"}}bg-brand/10 text-brand font-medium{{else}}text-gray-400 hover:bg-editor-card hover:text-white{{end}}">
+      {{template "icon-reports" .}} Reports
     </a>
   </nav>
 
