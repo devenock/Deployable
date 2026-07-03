@@ -67,17 +67,56 @@
                 }
             }
         },
+        "/account/github/accounts/{id}": {
+            "delete": {
+                "description": "Requires a session cookie and ownership. Any connected_repos entries added through this account are removed too (they can't be scanned via it anymore); reports already generated from them are untouched (a different table, unaffected by this).",
+                "tags": [
+                    "web"
+                ],
+                "summary": "Disconnect a GitHub account",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "github_accounts row ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Disconnected",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "Unknown account, or not the owner",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/account/github/repos": {
             "get": {
-                "description": "Requires a session cookie and a connected GitHub account (see GET /auth/github/connect). Lists the caller's repos from the GitHub API, most recently updated first, marking which are already on the watchlist. Returns a \"connect GitHub\" prompt instead if no token is on file.",
+                "description": "Requires a session cookie and ownership of the account. Lists that account's repos from the GitHub API, most recently updated first, marking which are already on the watchlist.",
                 "produces": [
                     "text/html"
                 ],
                 "tags": [
                     "web"
                 ],
-                "summary": "Browse your GitHub repositories",
+                "summary": "Browse one connected GitHub account's repositories",
                 "parameters": [
+                    {
+                        "type": "string",
+                        "description": "github_accounts row ID to browse",
+                        "name": "account",
+                        "in": "query",
+                        "required": true
+                    },
                     {
                         "type": "integer",
                         "description": "Page number, 1-indexed",
@@ -95,7 +134,7 @@
                 }
             },
             "post": {
-                "description": "Requires a session cookie. Adds (or refreshes, if already added) a repo on the caller's connected-repos watchlist — this only tracks it, it doesn't scan it. Trusts the client-supplied repo metadata (matching the picker it came from) rather than re-verifying against GitHub, since the watchlist is a personal list scoped to the caller and scanning always re-validates against the real repo anyway.",
+                "description": "Requires a session cookie. Adds (or refreshes, if already added) a repo on the caller's connected-repos watchlist under the given account — this only tracks it, it doesn't scan it. Trusts the client-supplied repo metadata (matching the picker it came from) rather than re-verifying against GitHub, since the watchlist is a personal list scoped to the caller and scanning always re-validates against the real repo anyway.",
                 "consumes": [
                     "application/x-www-form-urlencoded"
                 ],
@@ -107,6 +146,13 @@
                 ],
                 "summary": "Add a repository to your watchlist",
                 "parameters": [
+                    {
+                        "type": "string",
+                        "description": "github_accounts row ID this repo was browsed under",
+                        "name": "account_id",
+                        "in": "formData",
+                        "required": true
+                    },
                     {
                         "type": "integer",
                         "description": "GitHub's numeric repository ID",
@@ -166,6 +212,12 @@
                         "type": "string",
                         "description": "Set to 'button' to get the re-rendered Add button instead of an empty response",
                         "name": "render",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "github_accounts row ID (only used with render=button)",
+                        "name": "account_id",
                         "in": "query"
                     },
                     {
@@ -610,11 +662,11 @@
         },
         "/auth/github/connect": {
             "get": {
-                "description": "Requires an active session (see RequireAuth). Redirects to GitHub's OAuth authorize page requesting `repo` scope — broader than the read:user/user:email scope used for sign-in — so the resulting token can download private repository archives. GitHubOAuthCallback encrypts it (AES-256-GCM, ENCRYPTION_KEY) and stores it on the user record.",
+                "description": "Requires an active session (see RequireAuth). Redirects to GitHub's OAuth authorize page requesting `repo` scope — broader than the read:user/user:email scope used for sign-in — so the resulting token can download private repository archives. GitHubOAuthCallback encrypts it (AES-256-GCM, ENCRYPTION_KEY) and adds it as a connected account (a user can connect more than one — reconnecting the same GitHub account refreshes its token rather than adding a duplicate).",
                 "tags": [
                     "analyze"
                 ],
-                "summary": "Connect GitHub for private repository access",
+                "summary": "Connect a GitHub account for private repository access",
                 "parameters": [
                     {
                         "type": "string",
@@ -722,6 +774,41 @@
                     },
                     "303": {
                         "description": "No valid session — redirects to /login",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/dashboard/repos/{id}": {
+            "get": {
+                "description": "Requires a session cookie and ownership of the watchlist entry. Shows the repo's metadata and every report ever generated for it (not just the most recent, unlike the flat Reports list).",
+                "produces": [
+                    "text/html"
+                ],
+                "tags": [
+                    "web"
+                ],
+                "summary": "One connected repo's details and report history",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "connected_repos row ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "HTML page",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "Unknown watchlist entry, or not the owner",
                         "schema": {
                             "type": "string"
                         }
