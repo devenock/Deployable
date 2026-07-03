@@ -16,12 +16,16 @@ import (
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
 	"github.com/joho/godotenv"
 	httpSwagger "github.com/swaggo/http-swagger"
+	"golang.org/x/oauth2"
+	oauthgithub "golang.org/x/oauth2/github"
+	oauthgoogle "golang.org/x/oauth2/google"
 
 	assets "deployable"
 	"deployable/cache"
 	"deployable/db"
 	_ "deployable/docs"
 	"deployable/handlers"
+	"deployable/internal/mailer"
 	"deployable/middleware"
 )
 
@@ -90,12 +94,25 @@ func main() {
 		log.Fatalf("Template parse failed: %v", err)
 	}
 
+	// Mailer (SMTP via Mailtrap in dev; falls back to console logging if
+	// SMTP_HOST/SMTP_USERNAME are unset)
+	mail := mailer.New(mailer.ConfigFromEnv())
+
+	appURL := os.Getenv("APP_URL")
+	if appURL == "" {
+		appURL = "http://localhost:" + envOr("PORT", "8080")
+	}
+
 	// Init handlers
 	deps := handlers.Deps{
-		Pool:    pool,
-		Redis:   rdb,
-		Tmpl:    tmpl,
-		Version: version,
+		Pool:        pool,
+		Redis:       rdb,
+		Tmpl:        tmpl,
+		Version:     version,
+		Mailer:      mail,
+		AppURL:      appURL,
+		GitHubOAuth: newOAuthConfig(oauthgithub.Endpoint, "GITHUB_CLIENT_ID", "GITHUB_CLIENT_SECRET", "GITHUB_REDIRECT_URL", []string{"read:user", "user:email"}),
+		GoogleOAuth: newOAuthConfig(oauthgoogle.Endpoint, "GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET", "GOOGLE_REDIRECT_URL", []string{"openid", "email", "profile"}),
 	}
 
 	// Router
@@ -127,6 +144,19 @@ func main() {
 	r.Get("/register", handlers.RegisterPage(deps))
 	r.Post("/register", handlers.Register(deps))
 	r.Post("/logout", handlers.Logout(deps))
+	r.Get("/verify-email", handlers.VerifyEmailPage(deps))
+	r.Post("/verify-email", handlers.VerifyEmail(deps))
+	r.Post("/resend-otp", handlers.ResendOTP(deps))
+	r.Get("/forgot-password", handlers.ForgotPasswordPage(deps))
+	r.Post("/forgot-password", handlers.ForgotPassword(deps))
+	r.Get("/reset-password", handlers.ResetPasswordPage(deps))
+	r.Post("/reset-password", handlers.ResetPassword(deps))
+
+	// OAuth login
+	r.Get("/auth/github", handlers.GitHubOAuthStart(deps))
+	r.Get("/auth/github/callback", handlers.GitHubOAuthCallback(deps))
+	r.Get("/auth/google", handlers.GoogleOAuthStart(deps))
+	r.Get("/auth/google/callback", handlers.GoogleOAuthCallback(deps))
 
 	// Protected routes
 	r.Group(func(r chi.Router) {
@@ -223,4 +253,24 @@ func timeAgo(t time.Time) string {
 	default:
 		return strconv.Itoa(int(d.Hours()/24)) + "d ago"
 	}
+}
+
+// newOAuthConfig builds an oauth2.Config from env vars. ClientID/Secret are
+// left empty (and the config effectively disabled — see handlers.oauthStart)
+// if not yet provisioned.
+func newOAuthConfig(endpoint oauth2.Endpoint, clientIDKey, clientSecretKey, redirectURLKey string, scopes []string) *oauth2.Config {
+	return &oauth2.Config{
+		ClientID:     os.Getenv(clientIDKey),
+		ClientSecret: os.Getenv(clientSecretKey),
+		RedirectURL:  os.Getenv(redirectURLKey),
+		Endpoint:     endpoint,
+		Scopes:       scopes,
+	}
+}
+
+func envOr(key, fallback string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return fallback
 }
