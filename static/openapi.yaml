@@ -1,0 +1,398 @@
+openapi: 3.0.3
+info:
+  title: Deployable API
+  description: |
+    Deployment Readiness Platform — Phase 1 (Foundation) API surface.
+
+    Phase 1 covers authentication (register/login/logout via session cookies),
+    health checks, and route stubs that will be filled in during later phases
+    (analysis pipeline, reports, CLI/API key access). Endpoints marked
+    **501 Not Implemented** are intentionally stubbed — they exist to prove
+    routing and middleware (auth, rate limiting, API key checks) work end to
+    end, ahead of the real implementation landing in Phase 2+.
+  version: "0.1.0-phase1"
+  contact:
+    name: Deployable
+servers:
+  - url: http://localhost:8080
+    description: Local development
+  - url: "{scheme}://{domain}"
+    description: Deployed instance
+    variables:
+      scheme:
+        enum: [http, https]
+        default: https
+      domain:
+        default: yourdomain.com
+
+tags:
+  - name: System
+    description: Health and status
+  - name: Auth
+    description: Registration, login, logout (session cookie based)
+  - name: Web
+    description: Authenticated web pages (session cookie required)
+  - name: API
+    description: REST API for the CLI and integrations (X-API-Key required)
+
+security: []
+
+paths:
+  /health:
+    get:
+      tags: [System]
+      summary: Health check
+      description: Pings Postgres and Redis and reports overall status. Used by Docker healthchecks and uptime monitoring.
+      operationId: getHealth
+      responses:
+        "200":
+          description: All dependencies healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+              example:
+                status: ok
+                postgres: ok
+                redis: ok
+                version: dev
+        "503":
+          description: One or more dependencies unhealthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+              example:
+                status: degraded
+                postgres: error
+                redis: ok
+                version: dev
+
+  /:
+    get:
+      tags: [Web]
+      summary: Landing page
+      description: Public marketing page. Renders HTML.
+      operationId: getLanding
+      responses:
+        "200":
+          description: Landing page HTML
+          content:
+            text/html:
+              schema:
+                type: string
+
+  /register:
+    get:
+      tags: [Auth]
+      summary: Registration form
+      operationId: getRegisterForm
+      responses:
+        "200":
+          description: Registration form HTML
+          content:
+            text/html:
+              schema:
+                type: string
+    post:
+      tags: [Auth]
+      summary: Create an account
+      description: |
+        Validates name/email/password (password minimum 8 characters), bcrypt
+        hashes the password (cost 12), creates the user, creates an initial
+        session, and sets the `session_id` cookie (HttpOnly, SameSite=Lax,
+        30-day expiry). Duplicate emails and validation failures re-render
+        the registration form with a 200 and an inline error rather than
+        raising an HTTP error status.
+      operationId: postRegister
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: "#/components/schemas/RegisterRequest"
+      responses:
+        "303":
+          description: Account created — redirects to /analyze with session cookie set
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+                example: "session_id=<token>; Path=/; Max-Age=2592000; HttpOnly; SameSite=Lax"
+            Location:
+              schema:
+                type: string
+                example: /analyze
+        "200":
+          description: Validation failed or email already registered — form re-rendered with an inline error
+          content:
+            text/html:
+              schema:
+                type: string
+
+  /login:
+    get:
+      tags: [Auth]
+      summary: Login form
+      operationId: getLoginForm
+      responses:
+        "200":
+          description: Login form HTML
+          content:
+            text/html:
+              schema:
+                type: string
+    post:
+      tags: [Auth]
+      summary: Sign in
+      description: |
+        Validates credentials against the stored bcrypt hash. On success,
+        creates a new session and sets the `session_id` cookie. On failure
+        (unknown email or wrong password), re-renders the login form with a
+        generic "Invalid email or password" error — no session is created and
+        which field was wrong is never disclosed.
+      operationId: postLogin
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "303":
+          description: Signed in — redirects to /analyze with session cookie set
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+                example: "session_id=<token>; Path=/; Max-Age=2592000; HttpOnly; SameSite=Lax"
+            Location:
+              schema:
+                type: string
+                example: /analyze
+        "200":
+          description: Invalid credentials — form re-rendered with an inline error, no session created
+          content:
+            text/html:
+              schema:
+                type: string
+
+  /logout:
+    post:
+      tags: [Auth]
+      summary: Sign out
+      description: Deletes the session from Postgres and Redis, clears the `session_id` cookie (Max-Age=0), and redirects to /login.
+      operationId: postLogout
+      security:
+        - cookieAuth: []
+      responses:
+        "303":
+          description: Signed out — redirects to /login with cookie cleared
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+                example: "session_id=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax"
+            Location:
+              schema:
+                type: string
+                example: /login
+
+  /analyze:
+    get:
+      tags: [Web]
+      summary: Analyze page (stub)
+      description: |
+        Requires a valid `session_id` cookie (checked against Redis first,
+        Postgres on cache miss). Full zip/GitHub/CLI input handling and the
+        processing pipeline land in Phase 2 — this stub proves the auth
+        middleware and routing work end to end.
+      operationId: getAnalyze
+      security:
+        - cookieAuth: []
+      responses:
+        "501":
+          description: Not implemented (Phase 2)
+          content:
+            text/plain:
+              schema:
+                type: string
+              example: "not implemented"
+        "303":
+          description: No valid session — redirects to /login
+          headers:
+            Location:
+              schema:
+                type: string
+                example: /login
+
+  /dashboard:
+    get:
+      tags: [Web]
+      summary: Dashboard (stub)
+      description: Requires a valid session. Saved reports list lands in Phase 5.
+      operationId: getDashboard
+      security:
+        - cookieAuth: []
+      responses:
+        "501":
+          description: Not implemented (Phase 5)
+          content:
+            text/plain:
+              schema:
+                type: string
+              example: "not implemented"
+        "303":
+          description: No valid session — redirects to /login
+          headers:
+            Location:
+              schema:
+                type: string
+                example: /login
+
+  /api/v1/analyze:
+    post:
+      tags: [API]
+      summary: Submit an analysis (stub)
+      description: |
+        Requires an `X-API-Key` header. The key is SHA-256 hashed and checked
+        against Redis first, then Postgres (`users.api_key_hash`) on a cache
+        miss. Subject to Redis-backed rate limiting
+        (`deployable:ratelimit:analysis:ip:{ip}`, default 5/hour, keyed on
+        the `X-Real-IP` header set by Caddy). Full submission handling lands
+        in Phase 4.
+      operationId: postAPIAnalyze
+      security:
+        - apiKeyAuth: []
+      responses:
+        "501":
+          description: Not implemented (Phase 4)
+          content:
+            text/plain:
+              schema:
+                type: string
+              example: "not implemented"
+        "401":
+          description: Missing or invalid API key
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: invalid or missing API key
+        "429":
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: rate limit exceeded, try again later
+
+  /api/v1/analyze/{jobID}:
+    get:
+      tags: [API]
+      summary: Get analysis job status (stub)
+      description: Requires an `X-API-Key` header. Job status polling lands in Phase 4.
+      operationId: getAPIAnalyzeStatus
+      security:
+        - apiKeyAuth: []
+      parameters:
+        - name: jobID
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Analysis job ID
+      responses:
+        "501":
+          description: Not implemented (Phase 4)
+          content:
+            text/plain:
+              schema:
+                type: string
+              example: "not implemented"
+        "401":
+          description: Missing or invalid API key
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: invalid or missing API key
+        "429":
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: rate limit exceeded, try again later
+
+components:
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: session_id
+      description: Set by /login or /register. HttpOnly, SameSite=Lax, 30-day expiry.
+    apiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: Per-user API key (Phase 4 issues these). SHA-256 hash is checked against users.api_key_hash.
+
+  schemas:
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [ok, degraded]
+        postgres:
+          type: string
+          enum: [ok, error]
+        redis:
+          type: string
+          enum: [ok, error]
+        version:
+          type: string
+      required: [status, postgres, redis, version]
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required: [error]
+
+    RegisterRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          example: Ada Lovelace
+        email:
+          type: string
+          format: email
+          example: ada@example.com
+        password:
+          type: string
+          format: password
+          minLength: 8
+          example: correct-horse-battery-staple
+      required: [name, email, password]
+
+    LoginRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          example: ada@example.com
+        password:
+          type: string
+          format: password
+          example: correct-horse-battery-staple
+      required: [email, password]
