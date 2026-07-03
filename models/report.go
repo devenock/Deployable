@@ -177,6 +177,90 @@ func FindReportByContentHash(ctx context.Context, pool *pgxpool.Pool, hash strin
 	return r, nil
 }
 
+// DeleteReport removes a report, scoped to its owner — a mismatched
+// userID (not the owner, or an anonymous report with no owner) behaves
+// identically to a nonexistent report (ErrNotFound), so this never leaks
+// whether a given slug exists to someone who doesn't own it.
+func DeleteReport(ctx context.Context, pool *pgxpool.Pool, id, userID uuid.UUID) error {
+	tag, err := pool.Exec(ctx, `DELETE FROM reports WHERE id = $1 AND user_id = $2`, id, userID)
+	if err != nil {
+		return fmt.Errorf("delete report: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
+// ReportSummary is a Report plus the originating job's input, needed by the
+// dashboard list to show what was scanned and whether rescan applies
+// (input_type == "github").
+type ReportSummary struct {
+	Report
+	InputType string
+	InputRef  string
+}
+
+// ListReportsByUser returns a page of a user's reports (most recent first),
+// optionally filtered by a case-insensitive substring match against the
+// source (input_ref), language, or framework. total is the full matching
+// count (for pagination), computed in the same round trip via a window
+// function.
+func ListReportsByUser(ctx context.Context, pool *pgxpool.Pool, userID uuid.UUID, search string, limit, offset int) ([]*ReportSummary, int, error) {
+	rows, err := pool.Query(ctx, `
+		SELECT r.id, r.job_id, r.user_id, r.slug, r.is_public,
+		       r.language, r.language_version, r.framework, r.databases, r.services,
+		       r.readiness_score, r.complexity_score, r.security_score,
+		       r.deterministic_findings, r.semantic_analysis,
+		       r.min_ram_mb, r.rec_ram_mb, r.min_cpu, r.storage_gb, r.est_rps, r.resource_reasoning,
+		       r.platforms, r.generated_files,
+		       r.content_hash, r.expires_at, r.created_at,
+		       j.input_type, COALESCE(j.input_ref, ''),
+		       COUNT(*) OVER() AS total
+		FROM reports r
+		JOIN analysis_jobs j ON j.id = r.job_id
+		WHERE r.user_id = $1
+		  AND (
+		    $2 = '' OR
+		    j.input_ref ILIKE '%' || $2 || '%' OR
+		    r.language ILIKE '%' || $2 || '%' OR
+		    r.framework ILIKE '%' || $2 || '%'
+		  )
+		ORDER BY r.created_at DESC
+		LIMIT $3 OFFSET $4
+	`, userID, search, limit, offset)
+	if err != nil {
+		return nil, 0, fmt.Errorf("list reports by user: %w", err)
+	}
+	defer rows.Close()
+
+	var summaries []*ReportSummary
+	total := 0
+	for rows.Next() {
+		s := &ReportSummary{}
+		err := rows.Scan(
+			&s.ID, &s.JobID, &s.UserID, &s.Slug, &s.IsPublic,
+			&s.Language, &s.LanguageVersion, &s.Framework, &s.Databases, &s.Services,
+			&s.ReadinessScore, &s.ComplexityScore, &s.SecurityScore,
+			&s.DeterministicFindings, &s.SemanticAnalysis,
+			&s.MinRAMMB, &s.RecRAMMB, &s.MinCPU, &s.StorageGB, &s.EstRPS, &s.ResourceReasoning,
+			&s.Platforms, &s.GeneratedFiles,
+			&s.ContentHash, &s.ExpiresAt, &s.CreatedAt,
+			&s.InputType, &s.InputRef,
+			&total,
+		)
+		if err != nil {
+			return nil, 0, fmt.Errorf("scan report summary: %w", err)
+		}
+		summaries = append(summaries, s)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, 0, fmt.Errorf("list reports by user: %w", err)
+	}
+
+	return summaries, total, nil
+}
+
 func generateSlug() (string, error) {
 	b := make([]byte, 6)
 	if _, err := rand.Read(b); err != nil {
