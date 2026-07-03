@@ -7,7 +7,34 @@ document.addEventListener('DOMContentLoaded', function () {
   recordRecentReport();
   renderRecentReports();
   initScrollReveal();
+  initSidebar();
 });
+
+// Toggles the off-canvas app-sidebar (see the app-sidebar/app-topbar
+// partials in base.html) on mobile — #sidebar-toggle lives in the topbar,
+// #sidebar-backdrop closes it on outside click. No-ops on pages that don't
+// have a sidebar.
+function initSidebar() {
+  var toggle = document.getElementById('sidebar-toggle');
+  var sidebar = document.getElementById('app-sidebar');
+  var backdrop = document.getElementById('sidebar-backdrop');
+  if (!toggle || !sidebar) return;
+
+  var isOpen = function () { return !sidebar.classList.contains('-translate-x-full'); };
+  var open = function () {
+    sidebar.classList.remove('-translate-x-full');
+    if (backdrop) backdrop.classList.remove('hidden');
+  };
+  var close = function () {
+    sidebar.classList.add('-translate-x-full');
+    if (backdrop) backdrop.classList.add('hidden');
+  };
+
+  toggle.addEventListener('click', function () {
+    isOpen() ? close() : open();
+  });
+  if (backdrop) backdrop.addEventListener('click', close);
+}
 
 // Fades/slides in any [data-reveal] element the first time it scrolls into
 // view (each element reveals once, then stops being observed). Elements can
