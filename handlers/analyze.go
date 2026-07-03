@@ -20,6 +20,8 @@ import (
 
 	"deployable/internal/analyzer"
 	"deployable/internal/claude"
+	tokencrypto "deployable/internal/crypto"
+	ghclient "deployable/internal/github"
 	"deployable/middleware"
 	"deployable/models"
 )
@@ -58,10 +60,21 @@ func AnalyzePage(deps Deps) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		user, _ := middleware.UserFromContext(r.Context())
 		maxBytes := envInt64("MAX_UPLOAD_BYTES", defaultMaxUploadBytes)
+
+		hasGitHub := false
+		if user != nil {
+			if _, err := models.GetGitHubToken(r.Context(), deps.Pool, user.ID); err == nil {
+				hasGitHub = true
+			}
+		}
+
 		deps.Render(w, "analyze-index", map[string]any{
-			"Title":     "Analyze",
-			"User":      user,
-			"MaxUpload": maxBytes / (1024 * 1024),
+			"Title":              "Analyze",
+			"User":               user,
+			"MaxUpload":          maxBytes / (1024 * 1024),
+			"HasGitHubConnected": hasGitHub,
+			"GitHubConnected":    r.URL.Query().Get("github_connected") == "1",
+			"OAuthError":         r.URL.Query().Get("oauth_error") == "1",
 		})
 	}
 }
@@ -129,6 +142,122 @@ func AnalyzeZip(deps Deps) http.HandlerFunc {
 			_ = os.RemoveAll(extractDir)
 			log.Printf("extract zip for job %s: %v", job.ID, err)
 			http.Error(w, "invalid zip file", http.StatusBadRequest)
+			return
+		}
+
+		analysisRoot := normalizeExtractRoot(extractDir)
+
+		setJobStatus(context.Background(), deps, job.ID, "pending")
+		go runAnalysisPipeline(deps, job.ID, userID, extractDir, analysisRoot)
+
+		w.Header().Set("HX-Redirect", "/analyze/"+job.ID.String()+"/processing")
+		w.WriteHeader(http.StatusOK)
+	}
+}
+
+// AnalyzeGitHub godoc
+// @Summary      Submit a project via a GitHub repository URL
+// @Description  Parses a github.com/owner/repo URL, fetches repo metadata, and downloads its default-branch zipball (max 100MB by default, same limit and cap as direct ZIP upload). Public repos work with no account; private repos require the requester to have connected GitHub via GET /auth/github/connect. Kicks off the same analysis pipeline as the ZIP upload path.
+// @Tags         web
+// @Accept       x-www-form-urlencoded
+// @Param        url  formData  string  true  "GitHub repository URL, e.g. github.com/owner/repo"
+// @Success      200  {string}  string  "HX-Redirect header points to /analyze/{jobID}/processing"
+// @Failure      400  {string}  string  "Invalid URL or corrupted archive"
+// @Failure      404  {string}  string  "Repository not found or not accessible — connect GitHub for private repos"
+// @Failure      413  {string}  string  "Repository archive exceeds the configured upload limit"
+// @Failure      429  {string}  string  "GitHub API rate limit exceeded"
+// @Router       /analyze/github [post]
+func AnalyzeGitHub(deps Deps) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if err := r.ParseForm(); err != nil {
+			http.Error(w, "invalid form", http.StatusBadRequest)
+			return
+		}
+
+		owner, repo, err := ghclient.ParseRepoURL(r.FormValue("url"))
+		if err != nil {
+			http.Error(w, "Enter a valid GitHub repository URL, e.g. github.com/owner/repo", http.StatusBadRequest)
+			return
+		}
+
+		var userID *uuid.UUID
+		token := ""
+		if user, ok := middleware.UserFromContext(r.Context()); ok {
+			userID = &user.ID
+			if encrypted, err := models.GetGitHubToken(r.Context(), deps.Pool, user.ID); err == nil {
+				if plain, err := tokencrypto.DecryptToken(encrypted); err == nil {
+					token = plain
+				} else {
+					log.Printf("decrypt github token for user %s: %v", user.ID, err)
+				}
+			}
+		}
+
+		client := ghclient.NewClient(token)
+
+		info, err := client.GetRepo(r.Context(), owner, repo)
+		if err != nil {
+			switch {
+			case errors.Is(err, ghclient.ErrNotFound):
+				http.Error(w, "Repository not found or private. If it's private, connect your GitHub account first, then paste the URL again.", http.StatusNotFound)
+			case errors.Is(err, ghclient.ErrRateLimited):
+				http.Error(w, "GitHub API rate limit exceeded, please try again later.", http.StatusTooManyRequests)
+			default:
+				log.Printf("github repo lookup %s/%s: %v", owner, repo, err)
+				http.Error(w, "Could not reach GitHub, please try again", http.StatusBadGateway)
+			}
+			return
+		}
+
+		maxBytes := envInt64("MAX_UPLOAD_BYTES", defaultMaxUploadBytes)
+
+		job, err := models.CreateJob(r.Context(), deps.Pool, userID, "github", "github.com/"+owner+"/"+repo, clientIP(r))
+		if err != nil {
+			log.Printf("create job: %v", err)
+			http.Error(w, "could not start analysis", http.StatusInternalServerError)
+			return
+		}
+
+		zipPath := filepath.Join(tmpDir(), job.ID.String()+".zip")
+		written, err := client.DownloadZipball(r.Context(), owner, repo, info.DefaultBranch, zipPath, maxBytes)
+		if err != nil {
+			_ = os.Remove(zipPath)
+			log.Printf("download zipball %s/%s: %v", owner, repo, err)
+			http.Error(w, "Could not download the repository archive from GitHub, please try again", http.StatusBadGateway)
+			return
+		}
+		if written > maxBytes {
+			_ = os.Remove(zipPath)
+			http.Error(w, fmt.Sprintf(
+				"This repository's archive exceeds the %dMB analysis limit.",
+				maxBytes/(1024*1024),
+			), http.StatusRequestEntityTooLarge)
+			return
+		}
+
+		extractDir := filepath.Join(tmpDir(), job.ID.String())
+		if err := os.MkdirAll(extractDir, 0755); err != nil {
+			_ = os.Remove(zipPath)
+			log.Printf("mkdir extract dir: %v", err)
+			http.Error(w, "could not start analysis", http.StatusInternalServerError)
+			return
+		}
+
+		zf, err := os.Open(zipPath)
+		if err != nil {
+			_ = os.Remove(zipPath)
+			_ = os.RemoveAll(extractDir)
+			log.Printf("open downloaded zipball: %v", err)
+			http.Error(w, "could not start analysis", http.StatusInternalServerError)
+			return
+		}
+		extractErr := extractZip(zf, written, extractDir, maxBytes)
+		zf.Close()
+		_ = os.Remove(zipPath)
+		if extractErr != nil {
+			_ = os.RemoveAll(extractDir)
+			log.Printf("extract github zipball for job %s: %v", job.ID, extractErr)
+			http.Error(w, "invalid repository archive", http.StatusBadRequest)
 			return
 		}
 
