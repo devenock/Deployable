@@ -27,6 +27,14 @@ var excludedDirs = map[string]bool{
 	".vscode":      true,
 }
 
+// ShouldExcludeDir reports whether a directory name is skipped during
+// analysis. Exported so the CLI can apply the same filter when packaging a
+// project into a zip before upload — no point sending node_modules etc.
+// over the wire just to have the server discard it.
+func ShouldExcludeDir(name string) bool {
+	return excludedDirs[name]
+}
+
 // maxWalkFileBytes caps how large a single file can be before it's excluded
 // from content-reading steps (secrets/env scanning); it is still counted in
 // the manifest.
