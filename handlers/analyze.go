@@ -364,8 +364,11 @@ func ProcessingPage(deps Deps) http.HandlerFunc {
 			http.NotFound(w, r)
 			return
 		}
+		user, _ := middleware.UserFromContext(r.Context())
 		deps.Render(w, "analyze-processing", map[string]any{
 			"Title":       "Analyzing",
+			"User":        user,
+			"ActiveNav":   "analyze",
 			"JobID":       job.ID.String(),
 			"Steps":       analysisSteps,
 			"CurrentStep": job.CurrentStep,

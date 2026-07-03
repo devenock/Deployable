@@ -5,9 +5,15 @@
 {{template "head" .}}
 </head>
 <body class="bg-editor-bg text-gray-100 min-h-screen font-sans antialiased">
+{{if .User}}
+{{template "app-sidebar" .}}
+<div class="sm:pl-64">
+  {{template "app-topbar" .}}
+{{else}}
 {{template "nav" .}}
+{{end}}
 
-<section class="relative overflow-hidden min-h-screen flex items-center">
+<section class="relative overflow-hidden min-h-[calc(100vh-3.5rem)] flex items-center">
   <div class="absolute inset-0 bg-grid -z-10"></div>
   <div class="glow -z-10 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-72 w-72 bg-brand/15"></div>
 
@@ -28,6 +34,9 @@
     </div>
   </div>
 </section>
+{{if .User}}
+</div>
+{{end}}
 </body>
 </html>
 {{end}}
