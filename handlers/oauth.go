@@ -32,10 +32,11 @@ const (
 // oauthProfile is the subset of a provider's user profile we need,
 // normalized across GitHub and Google.
 type oauthProfile struct {
-	ID    string // provider-scoped account ID
-	Login string // GitHub username; empty for Google
-	Email string // primary, provider-verified email (empty if unavailable)
-	Name  string
+	ID        string // provider-scoped account ID
+	Login     string // GitHub username; empty for Google
+	Email     string // primary, provider-verified email (empty if unavailable)
+	Name      string
+	AvatarURL string // GitHub only
 }
 
 // GitHubOAuthStart godoc
@@ -90,8 +91,8 @@ func GitHubOAuthCallback(deps Deps) http.HandlerFunc {
 }
 
 // GitHubConnectStart godoc
-// @Summary      Connect GitHub for private repository access
-// @Description  Requires an active session (see RequireAuth). Redirects to GitHub's OAuth authorize page requesting `repo` scope — broader than the read:user/user:email scope used for sign-in — so the resulting token can download private repository archives. GitHubOAuthCallback encrypts it (AES-256-GCM, ENCRYPTION_KEY) and stores it on the user record.
+// @Summary      Connect a GitHub account for private repository access
+// @Description  Requires an active session (see RequireAuth). Redirects to GitHub's OAuth authorize page requesting `repo` scope — broader than the read:user/user:email scope used for sign-in — so the resulting token can download private repository archives. GitHubOAuthCallback encrypts it (AES-256-GCM, ENCRYPTION_KEY) and adds it as a connected account (a user can connect more than one — reconnecting the same GitHub account refreshes its token rather than adding a duplicate).
 // @Tags         analyze
 // @Param        return_to  query  string  false  "Local path to redirect back to after connecting (default /analyze)"
 // @Success      303  {string}  string  "Redirects to github.com/login/oauth/authorize"
@@ -144,8 +145,8 @@ func completeGitHubConnect(w http.ResponseWriter, r *http.Request, deps Deps, to
 		return
 	}
 
-	if err := models.SetGitHubToken(r.Context(), deps.Pool, user.ID, encrypted, profile.ID, profile.Login); err != nil {
-		log.Printf("store github token: %v", err)
+	if _, err := models.AddGitHubAccount(r.Context(), deps.Pool, user.ID, profile.ID, profile.Login, profile.AvatarURL, encrypted); err != nil {
+		log.Printf("add github account: %v", err)
 		http.Redirect(w, r, returnTo+"?oauth_error=1", http.StatusSeeOther)
 		return
 	}
@@ -342,10 +343,11 @@ func linkOrCreateOAuthUser(ctx context.Context, pool *pgxpool.Pool, provider str
 }
 
 type githubUserResponse struct {
-	ID    int64  `json:"id"`
-	Login string `json:"login"`
-	Name  string `json:"name"`
-	Email string `json:"email"`
+	ID        int64  `json:"id"`
+	Login     string `json:"login"`
+	Name      string `json:"name"`
+	Email     string `json:"email"`
+	AvatarURL string `json:"avatar_url"`
 }
 
 type githubEmailResponse struct {
@@ -390,10 +392,11 @@ func fetchGitHubProfile(client *http.Client) (oauthProfile, error) {
 	}
 
 	return oauthProfile{
-		ID:    strconv.FormatInt(u.ID, 10),
-		Login: u.Login,
-		Email: email,
-		Name:  name,
+		ID:        strconv.FormatInt(u.ID, 10),
+		Login:     u.Login,
+		Email:     email,
+		Name:      name,
+		AvatarURL: u.AvatarURL,
 	}, nil
 }
 
