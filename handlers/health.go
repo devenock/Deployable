@@ -11,7 +11,14 @@ import (
 	"deployable/cache"
 )
 
-// HealthHandler pings Postgres and Redis and reports overall status.
+// HealthHandler godoc
+// @Summary      Health check
+// @Description  Pings Postgres and Redis and reports overall status. Used by Docker healthchecks and uptime monitoring.
+// @Tags         system
+// @Produce      json
+// @Success      200  {object}  HealthResponse
+// @Failure      503  {object}  HealthResponse
+// @Router       /health [get]
 func HealthHandler(pool *pgxpool.Pool, rdb *cache.Client, version string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
@@ -36,11 +43,11 @@ func HealthHandler(pool *pgxpool.Pool, rdb *cache.Client, version string) http.H
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(httpStatus)
-		_ = json.NewEncoder(w).Encode(map[string]string{
-			"status":   status,
-			"postgres": postgresStatus,
-			"redis":    redisStatus,
-			"version":  version,
+		_ = json.NewEncoder(w).Encode(HealthResponse{
+			Status:   status,
+			Postgres: postgresStatus,
+			Redis:    redisStatus,
+			Version:  version,
 		})
 	}
 }
