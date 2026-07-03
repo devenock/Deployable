@@ -52,7 +52,7 @@ const (
 
 // AnalyzePage godoc
 // @Summary      Analyze page
-// @Description  Public, rate-limited input page for starting an analysis (zip upload; GitHub/CLI tabs land in Phase 3/4). Works for anonymous visitors — if a session cookie is present the resulting job/report is attributed to that user.
+// @Description  Public, rate-limited input page for starting an analysis (zip upload; GitHub/CLI tabs land in Phase 3/4). Works for anonymous visitors — if a session cookie is present the resulting job/report is attributed to that user. Logged-in visitors get the dashboard's sidebar shell instead of the marketing nav.
 // @Tags         web
 // @Produce      html
 // @Success      200  {string}  string  "HTML page"
@@ -60,27 +60,38 @@ const (
 func AnalyzePage(deps Deps) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		user, _ := middleware.UserFromContext(r.Context())
-		maxBytes := envInt64("MAX_UPLOAD_BYTES", defaultMaxUploadBytes)
+		data := analyzeFormData(deps, r, user)
+		data["Title"] = "Analyze"
+		data["ActiveNav"] = "analyze"
+		deps.Render(w, "analyze-index", data)
+	}
+}
 
-		hasGitHub := false
-		hasAPIKey := false
-		if user != nil {
-			if _, err := models.GetGitHubToken(r.Context(), deps.Pool, user.ID); err == nil {
-				hasGitHub = true
-			}
-			hasAPIKey, _ = models.HasAPIKey(r.Context(), deps.Pool, user.ID)
+// analyzeFormData builds the render data the "analyze-form" partial needs
+// (dropzone limits, GitHub-connect state, API key state, OAuth callback
+// flash flags). Shared by the standalone AnalyzePage and the dashboard,
+// which embeds the same partial in its Analyze section rather than sending
+// logged-in users to a separate page.
+func analyzeFormData(deps Deps, r *http.Request, user *models.User) map[string]any {
+	maxBytes := envInt64("MAX_UPLOAD_BYTES", defaultMaxUploadBytes)
+
+	hasGitHub := false
+	hasAPIKey := false
+	if user != nil {
+		if _, err := models.GetGitHubToken(r.Context(), deps.Pool, user.ID); err == nil {
+			hasGitHub = true
 		}
+		hasAPIKey, _ = models.HasAPIKey(r.Context(), deps.Pool, user.ID)
+	}
 
-		deps.Render(w, "analyze-index", map[string]any{
-			"Title":              "Analyze",
-			"User":               user,
-			"AppURL":             deps.AppURL,
-			"MaxUpload":          maxBytes / (1024 * 1024),
-			"HasGitHubConnected": hasGitHub,
-			"GitHubConnected":    r.URL.Query().Get("github_connected") == "1",
-			"OAuthError":         r.URL.Query().Get("oauth_error") == "1",
-			"HasAPIKey":          hasAPIKey,
-		})
+	return map[string]any{
+		"User":               user,
+		"AppURL":             deps.AppURL,
+		"MaxUpload":          maxBytes / (1024 * 1024),
+		"HasGitHubConnected": hasGitHub,
+		"GitHubConnected":    r.URL.Query().Get("github_connected") == "1",
+		"OAuthError":         r.URL.Query().Get("oauth_error") == "1",
+		"HasAPIKey":          hasAPIKey,
 	}
 }
 

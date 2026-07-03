@@ -5,6 +5,16 @@
 {{template "head" .}}
 </head>
 <body class="bg-editor-bg text-gray-100 min-h-screen font-sans antialiased">
+{{if .User}}
+{{template "app-sidebar" .}}
+<div class="sm:pl-64">
+  {{template "app-topbar" .}}
+  {{template "flash" .}}
+  <main class="max-w-xl mx-auto px-4 py-10">
+    {{template "analyze-form" .}}
+  </main>
+</div>
+{{else}}
 {{template "nav" .}}
 {{template "flash" .}}
 
@@ -13,6 +23,33 @@
   <div class="glow -z-10 top-[-6rem] left-1/2 -translate-x-1/2 h-80 w-[36rem] bg-brand/15"></div>
 
   <div class="max-w-xl mx-auto px-4 py-16">
+    {{template "analyze-form" .}}
+  </div>
+</section>
+{{end}}
+
+<script>
+  function showFormError(boxID, message) {
+    const box = document.getElementById(boxID);
+    box.innerHTML = '<div class="mb-4 rounded-md border border-danger/40 bg-danger/10 px-4 py-3 text-sm text-danger">' +
+      (message || 'Something went wrong, please try again.') + '</div>';
+  }
+
+  document.body.addEventListener('htmx:responseError', function (evt) {
+    const boxID = evt.detail.elt && evt.detail.elt.id === 'github-form' ? 'github-error' : 'upload-error';
+    showFormError(boxID, evt.detail.xhr.responseText);
+  });
+</script>
+</body>
+</html>
+{{end}}
+
+{{/* analyze-form: the actual "analyze a project" UI (tabs, dropzone, GitHub
+     form, CLI panel) with no page chrome around it — reused as-is by the
+     standalone /analyze page above and embedded directly into the
+     dashboard's Analyze section (see templates/dashboard/index.html), so
+     logged-in users never leave the dashboard shell to start an analysis. */}}
+{{define "analyze-form"}}
     <div class="text-center">
       <h1 class="fade-up text-3xl font-bold text-white tracking-tight">Analyze your project</h1>
       <p class="fade-up mt-2 text-gray-400 [animation-delay:60ms]">Get a deployment readiness report in under a minute.</p>
@@ -189,23 +226,6 @@
 
       </div>
     </div>
-  </div>
-</section>
-
-<script>
-  function showFormError(boxID, message) {
-    const box = document.getElementById(boxID);
-    box.innerHTML = '<div class="mb-4 rounded-md border border-danger/40 bg-danger/10 px-4 py-3 text-sm text-danger">' +
-      (message || 'Something went wrong, please try again.') + '</div>';
-  }
-
-  document.body.addEventListener('htmx:responseError', function (evt) {
-    const boxID = evt.detail.elt && evt.detail.elt.id === 'github-form' ? 'github-error' : 'upload-error';
-    showFormError(boxID, evt.detail.xhr.responseText);
-  });
-</script>
-</body>
-</html>
 {{end}}
 
 {{define "api-key-generated"}}
