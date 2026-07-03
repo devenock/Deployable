@@ -1,0 +1,60 @@
+{{define "head"}}
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{if .Title}}{{.Title}} · {{end}}Deployable</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    darkMode: 'class',
+    theme: {
+      extend: {
+        colors: {
+          editor: {
+            bg: '#0b0f14',
+            surface: '#11161d',
+            card: '#171d26',
+            border: '#232b36',
+          },
+          brand: '#6366f1',
+          success: '#22c55e',
+          warn: '#f59e0b',
+          danger: '#ef4444',
+        }
+      }
+    }
+  }
+</script>
+<script src="https://unpkg.com/htmx.org@2.0.0"></script>
+{{end}}
+
+{{define "nav"}}
+<nav class="border-b border-editor-border bg-editor-surface">
+  <div class="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
+    <a href="/" class="text-lg font-semibold text-white">
+      Deploy<span class="text-brand">able</span>
+    </a>
+    <div class="flex items-center gap-4 text-sm">
+      {{if .User}}
+        <a href="/dashboard" class="text-gray-300 hover:text-white">Dashboard</a>
+        <a href="/analyze" class="text-gray-300 hover:text-white">Analyze</a>
+        <form action="/logout" method="POST">
+          <button type="submit" class="text-gray-300 hover:text-white">Logout</button>
+        </form>
+      {{else}}
+        <a href="/login" class="text-gray-300 hover:text-white">Sign In</a>
+        <a href="/register" class="rounded-md bg-brand px-3 py-1.5 text-white hover:opacity-90">Get Started</a>
+      {{end}}
+    </div>
+  </div>
+</nav>
+{{end}}
+
+{{define "flash"}}
+{{if .Flash}}
+<div class="max-w-5xl mx-auto px-4 mt-4">
+  <div class="rounded-md border border-danger/40 bg-danger/10 px-4 py-3 text-sm text-danger">
+    {{.Flash}}
+  </div>
+</div>
+{{end}}
+{{end}}
