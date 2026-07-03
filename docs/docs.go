@@ -687,7 +687,7 @@ const docTemplate = `{
         },
         "/dashboard": {
             "get": {
-                "description": "Requires a session cookie. Lists the caller's reports, most recent first, with search (matches source, language, or framework) and pagination, plus connected-repo watchlist management and an at-a-glance stats row. ?tab=analyze shows the Analyze section instead (embedded in the same shell — no navigation to a separate page). Requests carrying the HX-Request header (search/pagination) get just the results partial; everything else gets the full page.",
+                "description": "Requires a session cookie. Three sections in one shell, switched via ?tab= (or in-page via the sidebar, no navigation): \"dashboard\" (default) is the stats/connected-repos overview, \"analyze\" embeds the same analyze-form the standalone /analyze page uses, \"reports\" is the searchable, paginated report list. Requests carrying the HX-Request header (search/pagination within Reports) get just the results partial; everything else gets the full page.",
                 "produces": [
                     "text/html"
                 ],
@@ -698,19 +698,19 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Filter by source, language, or framework",
+                        "description": "Filter by source, language, or framework (Reports section)",
                         "name": "search",
                         "in": "query"
                     },
                     {
                         "type": "integer",
-                        "description": "Page number, 1-indexed",
+                        "description": "Page number, 1-indexed (Reports section)",
                         "name": "page",
                         "in": "query"
                     },
                     {
                         "type": "string",
-                        "description": "'analyze' shows the Analyze section; anything else (default) shows the reports overview",
+                        "description": "'analyze' or 'reports' shows that section; anything else (default) shows the overview",
                         "name": "tab",
                         "in": "query"
                     }
