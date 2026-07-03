@@ -258,6 +258,13 @@ func templateFuncs() template.FuncMap {
 		"fileID": func(name string) string {
 			return strings.NewReplacer("/", "-", ".", "-").Replace(name)
 		},
+		"initial": func(name string) string {
+			name = strings.TrimSpace(name)
+			if name == "" {
+				return "?"
+			}
+			return strings.ToUpper(string([]rune(name)[0]))
+		},
 		"percent": func(cur, total int) int {
 			if total <= 0 {
 				return 0

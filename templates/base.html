@@ -200,6 +200,89 @@
 </svg>
 {{end}}
 
+{{define "icon-dashboard"}}
+<svg class="h-[18px] w-[18px]" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect x="4" y="4" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.6"/>
+  <rect x="13" y="4" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.6"/>
+  <rect x="4" y="13" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.6"/>
+  <rect x="13" y="13" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.6"/>
+</svg>
+{{end}}
+
+{{define "icon-logout"}}
+<svg class="h-[18px] w-[18px]" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+  <path d="M10 8l-4 4 4 4M6 12h11" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
+{{end}}
+
+{{define "icon-menu"}}
+<svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+</svg>
+{{end}}
+
+{{/* app-sidebar: fixed left sidebar for authenticated app pages (dashboard
+     and, later, other logged-in-only pages) — distinct from "nav", which is
+     the horizontal marketing/auth nav. .ActiveNav ("dashboard" | "analyze")
+     highlights the current section. Off-canvas on mobile, toggled by
+     initSidebar() in app.js via #sidebar-toggle / #sidebar-backdrop. */}}
+{{define "app-sidebar"}}
+<div id="sidebar-backdrop" class="hidden fixed inset-0 z-40 bg-black/60 sm:hidden"></div>
+<aside id="app-sidebar"
+       class="fixed inset-y-0 left-0 z-50 flex w-64 -translate-x-full flex-col border-r border-editor-border bg-editor-surface transition-transform duration-200 ease-out sm:translate-x-0">
+  <a href="/dashboard" class="flex h-14 shrink-0 items-center gap-2 border-b border-editor-border px-5 text-[15px] font-semibold text-white">
+    {{template "logomark" .}}
+    Deploy<span class="text-brand">able</span>
+  </a>
+
+  <nav class="flex-1 space-y-1 overflow-y-auto px-3 py-4">
+    <a href="/dashboard" class="flex items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-colors {{if eq .ActiveNav "dashboard"}}bg-brand/10 text-brand font-medium{{else}}text-gray-400 hover:bg-editor-card hover:text-white{{end}}">
+      {{template "icon-dashboard" .}} Dashboard
+    </a>
+    <a href="/analyze" class="flex items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-colors {{if eq .ActiveNav "analyze"}}bg-brand/10 text-brand font-medium{{else}}text-gray-400 hover:bg-editor-card hover:text-white{{end}}">
+      {{template "icon-upload-cloud" .}} Analyze
+    </a>
+  </nav>
+
+  <div class="shrink-0 border-t border-editor-border p-3">
+    <div class="flex items-center gap-2.5 px-2 py-1.5">
+      <div class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand/15 text-xs font-semibold text-brand">{{initial .User.Name}}</div>
+      <div class="min-w-0 flex-1">
+        <p class="truncate text-xs font-medium text-gray-200">{{.User.Name}}</p>
+        <p class="truncate text-[10px] text-gray-500">{{.User.Email}}</p>
+      </div>
+    </div>
+    <form action="/logout" method="POST">
+      <button type="submit" class="mt-1 flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm text-gray-400 transition-colors hover:bg-editor-card hover:text-white">
+        {{template "icon-logout" .}} Logout
+      </button>
+    </form>
+  </div>
+</aside>
+{{end}}
+
+{{/* app-topbar: slim sticky bar for authenticated app pages — sits to the
+     right of app-sidebar (the page wraps its content in a container with
+     sm:pl-64 to make room). Carries the mobile sidebar toggle since the
+     sidebar itself is off-canvas below sm. */}}
+{{define "app-topbar"}}
+<header class="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-editor-border bg-editor-bg/80 px-4 backdrop-blur-md">
+  <button type="button" id="sidebar-toggle" aria-label="Toggle menu"
+          class="flex h-8 w-8 items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-editor-card hover:text-white sm:hidden">
+    {{template "icon-menu" .}}
+  </button>
+  <a href="/dashboard" class="flex items-center gap-2 text-sm font-semibold text-white sm:hidden">
+    {{template "logomark" .}}
+    Deploy<span class="text-brand">able</span>
+  </a>
+  <div class="ml-auto flex items-center gap-3">
+    <span class="hidden text-sm text-gray-400 sm:inline">{{.User.Email}}</span>
+    <div class="flex h-7 w-7 items-center justify-center rounded-full bg-brand/15 text-xs font-semibold text-brand">{{initial .User.Name}}</div>
+  </div>
+</header>
+{{end}}
+
 {{define "icon-copy-toggle"}}
 <svg data-icon-shown class="h-4 w-4" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
   <rect x="8" y="8" width="12" height="12" rx="2" stroke="currentColor" stroke-width="1.6"/>
