@@ -23,6 +23,7 @@ const sessionCacheTTL = 5 * time.Minute
 type cachedSession struct {
 	UserID uuid.UUID `json:"user_id"`
 	Email  string    `json:"email"`
+	Name   string    `json:"name"`
 	Plan   string    `json:"plan"`
 }
 
@@ -75,7 +76,7 @@ func resolveSessionUser(ctx context.Context, pool *pgxpool.Pool, rdb *cache.Clie
 	if raw, err := rdb.Get(ctx, cacheKey); err == nil {
 		var cs cachedSession
 		if json.Unmarshal([]byte(raw), &cs) == nil {
-			return &models.User{ID: cs.UserID, Email: cs.Email, Plan: cs.Plan}, true
+			return &models.User{ID: cs.UserID, Email: cs.Email, Name: cs.Name, Plan: cs.Plan}, true
 		}
 	}
 
@@ -89,7 +90,7 @@ func resolveSessionUser(ctx context.Context, pool *pgxpool.Pool, rdb *cache.Clie
 		return nil, false
 	}
 
-	if payload, err := json.Marshal(cachedSession{UserID: user.ID, Email: user.Email, Plan: user.Plan}); err == nil {
+	if payload, err := json.Marshal(cachedSession{UserID: user.ID, Email: user.Email, Name: user.Name, Plan: user.Plan}); err == nil {
 		_ = rdb.Set(ctx, cacheKey, payload, sessionCacheTTL)
 	}
 
