@@ -1,0 +1,11 @@
+.env
+data/
+tmp/
+dist/
+backups/
+.git/
+.air.toml
+docker-compose*.yml
+Makefile
+*.md
+coverage.*

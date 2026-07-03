@@ -1,0 +1,9 @@
+.env
+data/
+tmp/
+dist/
+backups/
+coverage.out
+coverage.html
+*.db
+__debug_bin
