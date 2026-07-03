@@ -1,0 +1,20 @@
+{{define "404"}}
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+{{template "head" .}}
+</head>
+<body class="bg-editor-bg text-gray-100 min-h-screen">
+{{template "nav" .}}
+
+<main class="max-w-lg mx-auto px-4 py-24 text-center">
+  <div class="text-6xl font-bold text-brand">404</div>
+  <h1 class="mt-4 text-xl font-semibold text-white">Page not found</h1>
+  <p class="mt-2 text-gray-400">The page you're looking for doesn't exist or has moved.</p>
+  <a href="/" class="mt-8 inline-block rounded-md bg-brand px-6 py-3 text-white font-medium hover:opacity-90">
+    Back to home
+  </a>
+</main>
+</body>
+</html>
+{{end}}
