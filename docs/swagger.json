@@ -61,6 +61,148 @@
                 }
             }
         },
+        "/account/github/repos": {
+            "get": {
+                "description": "Requires a session cookie and a connected GitHub account (see GET /auth/github/connect). Lists the caller's repos from the GitHub API, most recently updated first, marking which are already on the watchlist. Returns a \"connect GitHub\" prompt instead if no token is on file.",
+                "produces": [
+                    "text/html"
+                ],
+                "tags": [
+                    "web"
+                ],
+                "summary": "Browse your GitHub repositories",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Page number, 1-indexed",
+                        "name": "page",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "HTML partial",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Requires a session cookie. Adds (or refreshes, if already added) a repo on the caller's connected-repos watchlist — this only tracks it, it doesn't scan it. Trusts the client-supplied repo metadata (matching the picker it came from) rather than re-verifying against GitHub, since the watchlist is a personal list scoped to the caller and scanning always re-validates against the real repo anyway.",
+                "consumes": [
+                    "application/x-www-form-urlencoded"
+                ],
+                "produces": [
+                    "text/html"
+                ],
+                "tags": [
+                    "web"
+                ],
+                "summary": "Add a repository to your watchlist",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "GitHub's numeric repository ID",
+                        "name": "github_id",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "owner/repo",
+                        "name": "full_name",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Whether the repo is private",
+                        "name": "private",
+                        "in": "formData"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Default branch name",
+                        "name": "default_branch",
+                        "in": "formData"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "HTML partial: the toggle button, now in Remove state",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/account/github/repos/{id}": {
+            "delete": {
+                "description": "Requires a session cookie and ownership. Removes the watchlist entry only — any reports already generated from this repo are untouched. With ?render=button (used by the repo picker), re-renders the same toggle button in \"Add\" state using the repo metadata passed as query params, instead of the default empty response (used by the dashboard's connected-repos list, where the row is simply removed).",
+                "produces": [
+                    "text/html"
+                ],
+                "tags": [
+                    "web"
+                ],
+                "summary": "Remove a repository from your watchlist",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "connected_repos row ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Set to 'button' to get the re-rendered Add button instead of an empty response",
+                        "name": "render",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "GitHub's numeric repository ID (only used with render=button)",
+                        "name": "github_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "owner/repo (only used with render=button)",
+                        "name": "full_name",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Whether the repo is private (only used with render=button)",
+                        "name": "private",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Default branch name (only used with render=button)",
+                        "name": "default_branch",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Empty, or the toggle button in Add state (see render param)",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "Unknown watchlist entry, or not the owner",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/analyze": {
             "get": {
                 "description": "Public, rate-limited input page for starting an analysis (zip upload; GitHub/CLI tabs land in Phase 3/4). Works for anonymous visitors — if a session cookie is present the resulting job/report is attributed to that user.",
@@ -827,7 +969,7 @@
         },
         "/report/{slug}": {
             "get": {
-                "description": "Renders the full deployment readiness report for a public slug: readiness score, detected stack, secret findings, infrastructure gaps, Claude's semantic analysis, resource estimates, platform recommendations, and generated deployment files. Anonymous-submitted reports expire after 7 days; logged-in users' reports are permanent. Owners additionally see rescan (GitHub-sourced only) and delete actions.",
+                "description": "Renders the deployment readiness report for a public slug. Anyone can view the score and detected stack; the full report (findings, resources, platforms, files) requires being logged in — as any user, not just the report's owner, so shared links still work between registered users. Anonymous-submitted reports expire after 7 days; logged-in users' reports are permanent. Owners additionally see rescan (GitHub-sourced only) and delete actions.",
                 "produces": [
                     "text/html"
                 ],
@@ -892,7 +1034,7 @@
         },
         "/report/{slug}/download": {
             "get": {
-                "description": "Zips the report's generated_files (Dockerfile, docker-compose.yml, .env.example, CI workflow, DEPLOYMENT.md, and platform config where applicable) and streams it as an attachment. Same access rule as viewing the report — no additional ownership check.",
+                "description": "Zips the report's generated_files (Dockerfile, docker-compose.yml, .env.example, CI workflow, DEPLOYMENT.md, and platform config where applicable) and streams it as an attachment. Requires being logged in (as any user, same rule as viewing the full report) — no additional ownership check beyond that.",
                 "produces": [
                     "application/zip"
                 ],
@@ -914,6 +1056,12 @@
                         "description": "deployable-\u003cslug\u003e.zip",
                         "schema": {
                             "type": "file"
+                        }
+                    },
+                    "401": {
+                        "description": "Sign in to download",
+                        "schema": {
+                            "type": "string"
                         }
                     },
                     "404": {

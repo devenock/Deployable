@@ -140,6 +140,114 @@ paths:
       summary: Generate (or regenerate) an API key
       tags:
       - web
+  /account/github/repos:
+    get:
+      description: Requires a session cookie and a connected GitHub account (see GET
+        /auth/github/connect). Lists the caller's repos from the GitHub API, most
+        recently updated first, marking which are already on the watchlist. Returns
+        a "connect GitHub" prompt instead if no token is on file.
+      parameters:
+      - description: Page number, 1-indexed
+        in: query
+        name: page
+        type: integer
+      produces:
+      - text/html
+      responses:
+        "200":
+          description: HTML partial
+          schema:
+            type: string
+      summary: Browse your GitHub repositories
+      tags:
+      - web
+    post:
+      consumes:
+      - application/x-www-form-urlencoded
+      description: Requires a session cookie. Adds (or refreshes, if already added)
+        a repo on the caller's connected-repos watchlist — this only tracks it, it
+        doesn't scan it. Trusts the client-supplied repo metadata (matching the picker
+        it came from) rather than re-verifying against GitHub, since the watchlist
+        is a personal list scoped to the caller and scanning always re-validates against
+        the real repo anyway.
+      parameters:
+      - description: GitHub's numeric repository ID
+        in: formData
+        name: github_id
+        required: true
+        type: integer
+      - description: owner/repo
+        in: formData
+        name: full_name
+        required: true
+        type: string
+      - description: Whether the repo is private
+        in: formData
+        name: private
+        type: boolean
+      - description: Default branch name
+        in: formData
+        name: default_branch
+        type: string
+      produces:
+      - text/html
+      responses:
+        "200":
+          description: 'HTML partial: the toggle button, now in Remove state'
+          schema:
+            type: string
+      summary: Add a repository to your watchlist
+      tags:
+      - web
+  /account/github/repos/{id}:
+    delete:
+      description: Requires a session cookie and ownership. Removes the watchlist
+        entry only — any reports already generated from this repo are untouched. With
+        ?render=button (used by the repo picker), re-renders the same toggle button
+        in "Add" state using the repo metadata passed as query params, instead of
+        the default empty response (used by the dashboard's connected-repos list,
+        where the row is simply removed).
+      parameters:
+      - description: connected_repos row ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Set to 'button' to get the re-rendered Add button instead of
+          an empty response
+        in: query
+        name: render
+        type: string
+      - description: GitHub's numeric repository ID (only used with render=button)
+        in: query
+        name: github_id
+        type: integer
+      - description: owner/repo (only used with render=button)
+        in: query
+        name: full_name
+        type: string
+      - description: Whether the repo is private (only used with render=button)
+        in: query
+        name: private
+        type: boolean
+      - description: Default branch name (only used with render=button)
+        in: query
+        name: default_branch
+        type: string
+      produces:
+      - text/html
+      responses:
+        "200":
+          description: Empty, or the toggle button in Add state (see render param)
+          schema:
+            type: string
+        "404":
+          description: Unknown watchlist entry, or not the owner
+          schema:
+            type: string
+      summary: Remove a repository from your watchlist
+      tags:
+      - web
   /analyze:
     get:
       description: Public, rate-limited input page for starting an analysis (zip upload;
@@ -718,12 +826,12 @@ paths:
       tags:
       - web
     get:
-      description: 'Renders the full deployment readiness report for a public slug:
-        readiness score, detected stack, secret findings, infrastructure gaps, Claude''s
-        semantic analysis, resource estimates, platform recommendations, and generated
-        deployment files. Anonymous-submitted reports expire after 7 days; logged-in
-        users'' reports are permanent. Owners additionally see rescan (GitHub-sourced
-        only) and delete actions.'
+      description: Renders the deployment readiness report for a public slug. Anyone
+        can view the score and detected stack; the full report (findings, resources,
+        platforms, files) requires being logged in — as any user, not just the report's
+        owner, so shared links still work between registered users. Anonymous-submitted
+        reports expire after 7 days; logged-in users' reports are permanent. Owners
+        additionally see rescan (GitHub-sourced only) and delete actions.
       parameters:
       - description: Report slug
         in: path
@@ -748,8 +856,8 @@ paths:
     get:
       description: Zips the report's generated_files (Dockerfile, docker-compose.yml,
         .env.example, CI workflow, DEPLOYMENT.md, and platform config where applicable)
-        and streams it as an attachment. Same access rule as viewing the report —
-        no additional ownership check.
+        and streams it as an attachment. Requires being logged in (as any user, same
+        rule as viewing the full report) — no additional ownership check beyond that.
       parameters:
       - description: Report slug
         in: path
@@ -763,6 +871,10 @@ paths:
           description: deployable-<slug>.zip
           schema:
             type: file
+        "401":
+          description: Sign in to download
+          schema:
+            type: string
         "404":
           description: Unknown/expired report, or no generated files
           schema:
