@@ -753,7 +753,7 @@ const docTemplate = `{
                 }
             },
             "post": {
-                "description": "Validates name/email/password (min 8 chars), bcrypt-hashes the password (cost 12), and creates an unverified user. Does NOT create a session — a 6-digit OTP is emailed and the user is redirected to /verify-email; login is blocked until the OTP is confirmed. Duplicate emails and validation failures re-render the form with 200 and an inline error.",
+                "description": "Validates name/email/password (min 8 chars, must match confirm_password), bcrypt-hashes the password (cost 12), and creates an unverified user. Does NOT create a session — a 6-digit OTP is emailed and the user is redirected to /verify-email; login is blocked until the OTP is confirmed. Duplicate emails and validation failures re-render the form with 200 and an inline error.",
                 "consumes": [
                     "application/x-www-form-urlencoded"
                 ],
@@ -783,6 +783,13 @@ const docTemplate = `{
                         "type": "string",
                         "description": "Password, minimum 8 characters",
                         "name": "password",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Must match password",
+                        "name": "confirm_password",
                         "in": "formData",
                         "required": true
                     }
@@ -899,7 +906,7 @@ const docTemplate = `{
                 }
             },
             "post": {
-                "description": "Validates the single-use token, updates the bcrypt hash (cost 12), consumes the token, and deletes every existing session for the account (forcing re-authentication everywhere) before redirecting to /login.",
+                "description": "Validates the single-use token and that password matches confirm_password, updates the bcrypt hash (cost 12), consumes the token, and deletes every existing session for the account (forcing re-authentication everywhere) before redirecting to /login.",
                 "consumes": [
                     "application/x-www-form-urlencoded"
                 ],
@@ -922,6 +929,13 @@ const docTemplate = `{
                         "type": "string",
                         "description": "New password, minimum 8 characters",
                         "name": "password",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Must match password",
+                        "name": "confirm_password",
                         "in": "formData",
                         "required": true
                     }
