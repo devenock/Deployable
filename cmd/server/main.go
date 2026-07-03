@@ -154,9 +154,14 @@ func main() {
 
 	// OAuth login
 	r.Get("/auth/github", handlers.GitHubOAuthStart(deps))
-	r.Get("/auth/github/callback", handlers.GitHubOAuthCallback(deps))
+	// Wrapped in OptionalAuth (not just plain) so GitHubOAuthCallback can see
+	// the logged-in user for the "connect GitHub for repo access" flow —
+	// GitHubConnectStart below requires a session, so a user is always
+	// present in context by the time intent=="connect" reaches the callback.
+	r.With(middleware.OptionalAuth(pool, rdb)).Get("/auth/github/callback", handlers.GitHubOAuthCallback(deps))
 	r.Get("/auth/google", handlers.GoogleOAuthStart(deps))
 	r.Get("/auth/google/callback", handlers.GoogleOAuthCallback(deps))
+	r.With(middleware.RequireAuth(pool, rdb)).Get("/auth/github/connect", handlers.GitHubConnectStart(deps))
 
 	// Public report view
 	r.Get("/report/{slug}", handlers.ReportView(deps))
@@ -172,6 +177,7 @@ func main() {
 		r.Use(middleware.OptionalAuth(pool, rdb))
 		r.Get("/analyze", handlers.AnalyzePage(deps))
 		r.With(middleware.RateLimit(rdb)).Post("/analyze/zip", handlers.AnalyzeZip(deps))
+		r.With(middleware.RateLimit(rdb)).Post("/analyze/github", handlers.AnalyzeGitHub(deps))
 		r.Get("/analyze/{jobID}/status", handlers.AnalyzeStatus(deps))
 		r.Get("/analyze/{jobID}/processing", handlers.ProcessingPage(deps))
 	})
