@@ -112,10 +112,11 @@ paths:
     post:
       consumes:
       - multipart/form-data
-      description: Validates and extracts the uploaded zip (max 50MB, zip-slip protected),
-        creates an analysis job, and kicks off the analysis pipeline in the background.
-        Responds with an HX-Redirect header to the processing page rather than a body
-        — the client (HTMX) follows it as a full navigation.
+      description: Validates and extracts the uploaded zip (max 100MB by default,
+        configurable via MAX_UPLOAD_BYTES; zip-slip protected), creates an analysis
+        job, and kicks off the analysis pipeline in the background. Responds with
+        an HX-Redirect header to the processing page rather than a body — the client
+        (HTMX) follows it as a full navigation.
       parameters:
       - description: Project source as a .zip archive
         in: formData
@@ -128,7 +129,11 @@ paths:
           schema:
             type: string
         "400":
-          description: Missing file, wrong extension, or file too large
+          description: Missing file or wrong extension
+          schema:
+            type: string
+        "413":
+          description: File exceeds the configured upload limit
           schema:
             type: string
       summary: Submit a project as a ZIP upload
