@@ -19,7 +19,7 @@ const docTemplate = `{
     "paths": {
         "/": {
             "get": {
-                "description": "Public marketing landing page.",
+                "description": "Public marketing landing page. Signed-in visitors are redirected to /dashboard instead — the marketing page has nothing for them and shouldn't be reachable once logged in.",
                 "produces": [
                     "text/html"
                 ],
@@ -30,6 +30,12 @@ const docTemplate = `{
                 "responses": {
                     "200": {
                         "description": "HTML page",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "303": {
+                        "description": "Signed in — redirects to /dashboard",
                         "schema": {
                             "type": "string"
                         }
@@ -207,7 +213,7 @@ const docTemplate = `{
         },
         "/analyze": {
             "get": {
-                "description": "Public, rate-limited input page for starting an analysis (zip upload; GitHub/CLI tabs land in Phase 3/4). Works for anonymous visitors — if a session cookie is present the resulting job/report is attributed to that user.",
+                "description": "Public, rate-limited input page for starting an analysis (zip upload; GitHub/CLI tabs land in Phase 3/4). Works for anonymous visitors — if a session cookie is present the resulting job/report is attributed to that user. Logged-in visitors get the dashboard's sidebar shell instead of the marketing nav.",
                 "produces": [
                     "text/html"
                 ],
@@ -681,7 +687,7 @@ const docTemplate = `{
         },
         "/dashboard": {
             "get": {
-                "description": "Requires a session cookie. Lists the caller's reports, most recent first, with search (matches source, language, or framework) and pagination. Requests carrying the HX-Request header (search/pagination) get just the results partial; everything else gets the full page.",
+                "description": "Requires a session cookie. Lists the caller's reports, most recent first, with search (matches source, language, or framework) and pagination, plus connected-repo watchlist management and an at-a-glance stats row. ?tab=analyze shows the Analyze section instead (embedded in the same shell — no navigation to a separate page). Requests carrying the HX-Request header (search/pagination) get just the results partial; everything else gets the full page.",
                 "produces": [
                     "text/html"
                 ],
@@ -700,6 +706,12 @@ const docTemplate = `{
                         "type": "integer",
                         "description": "Page number, 1-indexed",
                         "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "'analyze' shows the Analyze section; anything else (default) shows the reports overview",
+                        "name": "tab",
                         "in": "query"
                     }
                 ],
