@@ -158,10 +158,24 @@ func main() {
 	r.Get("/auth/google", handlers.GoogleOAuthStart(deps))
 	r.Get("/auth/google/callback", handlers.GoogleOAuthCallback(deps))
 
+	// Public report view
+	r.Get("/report/{slug}", handlers.ReportView(deps))
+
+	// Analyze — public (anonymous analysis is allowed per ARCHITECTURE.md),
+	// rate-limited by IP; OptionalAuth attaches a user to the job/report
+	// when a session cookie happens to be present, without requiring one.
+	r.Group(func(r chi.Router) {
+		r.Use(middleware.OptionalAuth(pool, rdb))
+		r.Use(middleware.RateLimit(rdb))
+		r.Get("/analyze", handlers.AnalyzePage(deps))
+		r.Post("/analyze/zip", handlers.AnalyzeZip(deps))
+		r.Get("/analyze/{jobID}/status", handlers.AnalyzeStatus(deps))
+		r.Get("/analyze/{jobID}/processing", handlers.ProcessingPage(deps))
+	})
+
 	// Protected routes
 	r.Group(func(r chi.Router) {
 		r.Use(middleware.RequireAuth(pool, rdb))
-		r.Get("/analyze", handlers.AnalyzePage(deps))
 		r.Get("/dashboard", handlers.Dashboard(deps))
 	})
 
