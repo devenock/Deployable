@@ -57,6 +57,59 @@ const docTemplate = `{
                 }
             }
         },
+        "/analyze/github": {
+            "post": {
+                "description": "Parses a github.com/owner/repo URL, fetches repo metadata, and downloads its default-branch zipball (max 100MB by default, same limit and cap as direct ZIP upload). Public repos work with no account; private repos require the requester to have connected GitHub via GET /auth/github/connect. Kicks off the same analysis pipeline as the ZIP upload path.",
+                "consumes": [
+                    "application/x-www-form-urlencoded"
+                ],
+                "tags": [
+                    "web"
+                ],
+                "summary": "Submit a project via a GitHub repository URL",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "GitHub repository URL, e.g. github.com/owner/repo",
+                        "name": "url",
+                        "in": "formData",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "HX-Redirect header points to /analyze/{jobID}/processing",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid URL or corrupted archive",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "Repository not found or not accessible — connect GitHub for private repos",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "413": {
+                        "description": "Repository archive exceeds the configured upload limit",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "429": {
+                        "description": "GitHub API rate limit exceeded",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/analyze/zip": {
             "post": {
                 "description": "Validates and extracts the uploaded zip (max 100MB by default, configurable via MAX_UPLOAD_BYTES; zip-slip protected), creates an analysis job, and kicks off the analysis pipeline in the background. Responds with an HX-Redirect header to the processing page rather than a body — the client (HTMX) follows it as a full navigation.",
@@ -294,6 +347,31 @@ const docTemplate = `{
                 "responses": {
                     "303": {
                         "description": "Redirects to /login?oauth_error=1 on failure",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/github/connect": {
+            "get": {
+                "description": "Requires an active session (see RequireAuth). Redirects to GitHub's OAuth authorize page requesting ` + "`" + `repo` + "`" + ` scope — broader than the read:user/user:email scope used for sign-in — so the resulting token can download private repository archives. GitHubOAuthCallback encrypts it (AES-256-GCM, ENCRYPTION_KEY) and stores it on the user record.",
+                "tags": [
+                    "analyze"
+                ],
+                "summary": "Connect GitHub for private repository access",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Local path to redirect back to after connecting (default /analyze)",
+                        "name": "return_to",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "303": {
+                        "description": "Redirects to github.com/login/oauth/authorize",
                         "schema": {
                             "type": "string"
                         }

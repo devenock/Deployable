@@ -108,6 +108,46 @@ paths:
       summary: Poll analysis job status
       tags:
       - web
+  /analyze/github:
+    post:
+      consumes:
+      - application/x-www-form-urlencoded
+      description: Parses a github.com/owner/repo URL, fetches repo metadata, and
+        downloads its default-branch zipball (max 100MB by default, same limit and
+        cap as direct ZIP upload). Public repos work with no account; private repos
+        require the requester to have connected GitHub via GET /auth/github/connect.
+        Kicks off the same analysis pipeline as the ZIP upload path.
+      parameters:
+      - description: GitHub repository URL, e.g. github.com/owner/repo
+        in: formData
+        name: url
+        required: true
+        type: string
+      responses:
+        "200":
+          description: HX-Redirect header points to /analyze/{jobID}/processing
+          schema:
+            type: string
+        "400":
+          description: Invalid URL or corrupted archive
+          schema:
+            type: string
+        "404":
+          description: Repository not found or not accessible — connect GitHub for
+            private repos
+          schema:
+            type: string
+        "413":
+          description: Repository archive exceeds the configured upload limit
+          schema:
+            type: string
+        "429":
+          description: GitHub API rate limit exceeded
+          schema:
+            type: string
+      summary: Submit a project via a GitHub repository URL
+      tags:
+      - web
   /analyze/zip:
     post:
       consumes:
@@ -232,6 +272,26 @@ paths:
       summary: GitHub OAuth callback
       tags:
       - auth
+  /auth/github/connect:
+    get:
+      description: Requires an active session (see RequireAuth). Redirects to GitHub's
+        OAuth authorize page requesting `repo` scope — broader than the read:user/user:email
+        scope used for sign-in — so the resulting token can download private repository
+        archives. GitHubOAuthCallback encrypts it (AES-256-GCM, ENCRYPTION_KEY) and
+        stores it on the user record.
+      parameters:
+      - description: Local path to redirect back to after connecting (default /analyze)
+        in: query
+        name: return_to
+        type: string
+      responses:
+        "303":
+          description: Redirects to github.com/login/oauth/authorize
+          schema:
+            type: string
+      summary: Connect GitHub for private repository access
+      tags:
+      - analyze
   /auth/google:
     get:
       description: Redirects to Google's OAuth consent page. Sets a short-lived oauth_state
