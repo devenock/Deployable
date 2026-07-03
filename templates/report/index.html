@@ -1,0 +1,200 @@
+{{define "report-index"}}
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+{{template "head" .}}
+</head>
+<body class="bg-editor-bg text-gray-100 min-h-screen">
+{{template "nav" .}}
+{{template "flash" .}}
+
+{{$r := .Report}}
+{{$sem := $r.SemanticAnalysis}}
+{{$det := $r.DeterministicFindings}}
+
+<main class="max-w-3xl mx-auto px-4 py-12">
+
+  <!-- Score + summary -->
+  <div class="flex flex-col sm:flex-row items-start sm:items-center gap-6 rounded-lg border border-editor-border bg-editor-card p-6">
+    <div class="flex flex-col items-center justify-center rounded-lg bg-editor-bg border border-editor-border w-28 h-28 shrink-0">
+      <span class="text-4xl font-bold {{scoreColor $r.ReadinessScore}}">{{$r.ReadinessScore}}</span>
+      <span class="text-xs text-gray-500">/100</span>
+    </div>
+    <div>
+      <h1 class="text-lg font-semibold text-white">
+        {{if $r.Language}}{{$r.Language}}{{else}}Unknown stack{{end}}
+        {{if $r.LanguageVersion}}<span class="text-gray-400 font-normal">{{$r.LanguageVersion}}</span>{{end}}
+        {{if $r.Framework}}<span class="text-gray-400 font-normal">· {{$r.Framework}}</span>{{end}}
+        {{range $r.Databases}}<span class="text-gray-400 font-normal">· {{.}}</span>{{end}}
+      </h1>
+      <p class="mt-1 text-sm text-gray-500">Analyzed {{timeAgo $r.CreatedAt}}</p>
+      {{if $sem.readiness_summary}}
+      <p class="mt-3 text-sm text-gray-300">{{$sem.readiness_summary}}</p>
+      {{end}}
+    </div>
+  </div>
+
+  <!-- Critical gaps -->
+  {{if $sem.critical_gaps}}
+  <section class="mt-8">
+    <h2 class="text-sm font-semibold uppercase tracking-wide text-danger">🔴 Critical Issues ({{len $sem.critical_gaps}})</h2>
+    <ul class="mt-3 space-y-2">
+      {{range $sem.critical_gaps}}
+      <li class="rounded-md border border-danger/30 bg-danger/5 px-4 py-2 text-sm text-gray-200">{{.}}</li>
+      {{end}}
+    </ul>
+  </section>
+  {{end}}
+
+  <!-- Warnings -->
+  {{if $sem.warnings}}
+  <section class="mt-8">
+    <h2 class="text-sm font-semibold uppercase tracking-wide text-warn">⚠️ Warnings ({{len $sem.warnings}})</h2>
+    <ul class="mt-3 space-y-2">
+      {{range $sem.warnings}}
+      <li class="rounded-md border border-warn/30 bg-warn/5 px-4 py-2 text-sm text-gray-200">{{.}}</li>
+      {{end}}
+    </ul>
+  </section>
+  {{end}}
+
+  <!-- Suggestions -->
+  {{if $sem.suggestions}}
+  <section class="mt-8">
+    <h2 class="text-sm font-semibold uppercase tracking-wide text-gray-400">💡 Suggestions ({{len $sem.suggestions}})</h2>
+    <ul class="mt-3 space-y-2">
+      {{range $sem.suggestions}}
+      <li class="rounded-md border border-editor-border bg-editor-card px-4 py-2 text-sm text-gray-300">{{.}}</li>
+      {{end}}
+    </ul>
+  </section>
+  {{end}}
+
+  <!-- Security -->
+  <section class="mt-8">
+    <h2 class="text-sm font-semibold uppercase tracking-wide text-gray-400">🔒 Security</h2>
+    <div class="mt-3 rounded-lg border border-editor-border bg-editor-card p-4">
+      <div class="flex items-center gap-2 text-sm">
+        <span class="text-gray-400">Security score:</span>
+        <span class="font-semibold {{scoreColor $r.SecurityScore}}">{{$r.SecurityScore}}/100</span>
+      </div>
+      {{if $sem.auth_assessment}}
+      <p class="mt-2 text-sm text-gray-300">{{$sem.auth_assessment}}</p>
+      {{end}}
+
+      {{$secrets := index $det "secret_findings"}}
+      {{if $secrets}}
+      <div class="mt-4 space-y-2">
+        <p class="text-xs uppercase tracking-wide text-gray-500">Hardcoded secret scan</p>
+        {{range $secrets}}
+        <div class="flex items-start gap-2 rounded-md border px-3 py-2 text-xs {{severityColor .Severity}}">
+          <span class="font-semibold uppercase">{{.Severity}}</span>
+          <span>{{.Name}} — {{.File}}{{if .Line}}:{{.Line}}{{end}}</span>
+        </div>
+        {{end}}
+      </div>
+      {{else}}
+      <p class="mt-4 text-sm text-success">No hardcoded secrets detected.</p>
+      {{end}}
+
+      {{$risks := index $sem "security_risks"}}
+      {{if $risks}}
+      <div class="mt-4 space-y-2">
+        <p class="text-xs uppercase tracking-wide text-gray-500">Semantic security review</p>
+        {{range $risks}}
+        <div class="rounded-md border px-3 py-2 text-xs {{severityColor .severity}}">
+          <span class="font-semibold uppercase">{{.severity}}</span> — {{.description}}
+          {{if .fix}}<div class="mt-1 text-gray-400">Fix: {{.fix}}</div>{{end}}
+        </div>
+        {{end}}
+      </div>
+      {{end}}
+    </div>
+  </section>
+
+  <!-- Infrastructure -->
+  <section class="mt-8">
+    <h2 class="text-sm font-semibold uppercase tracking-wide text-gray-400">⚙️ Infrastructure</h2>
+    {{$infra := index $det "infra_checks"}}
+    <div class="mt-3 grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
+      <div class="rounded-md border border-editor-border bg-editor-card px-3 py-2">
+        Dockerfile {{if $infra.DockerfileExists}}<span class="text-success">✓</span>{{else}}<span class="text-danger">✗</span>{{end}}
+      </div>
+      <div class="rounded-md border border-editor-border bg-editor-card px-3 py-2">
+        docker-compose {{if $infra.ComposeExists}}<span class="text-success">✓</span>{{else}}<span class="text-gray-500">—</span>{{end}}
+      </div>
+      <div class="rounded-md border border-editor-border bg-editor-card px-3 py-2">
+        .env.example {{if $infra.EnvExampleExists}}<span class="text-success">✓</span>{{else}}<span class="text-danger">✗</span>{{end}}
+      </div>
+      <div class="rounded-md border border-editor-border bg-editor-card px-3 py-2">
+        .gitignore covers .env {{if $infra.GitignoreCoversEnv}}<span class="text-success">✓</span>{{else}}<span class="text-danger">✗</span>{{end}}
+      </div>
+      <div class="rounded-md border border-editor-border bg-editor-card px-3 py-2">
+        CI config {{if $infra.CIConfigExists}}<span class="text-success">✓</span>{{else}}<span class="text-gray-500">—</span>{{end}}
+      </div>
+      <div class="rounded-md border border-editor-border bg-editor-card px-3 py-2">
+        Health check {{if $infra.HealthCheckFound}}<span class="text-success">✓</span>{{else}}<span class="text-danger">✗</span>{{end}}
+      </div>
+      <div class="rounded-md border border-editor-border bg-editor-card px-3 py-2">
+        Lock file {{if $infra.LockFileFound}}<span class="text-success">✓</span>{{else}}<span class="text-danger">✗</span>{{end}}
+      </div>
+    </div>
+    {{if $infra.EnvExampleMissingVars}}
+    <p class="mt-3 text-xs text-warn">Missing from .env.example: {{join $infra.EnvExampleMissingVars ", "}}</p>
+    {{end}}
+  </section>
+
+  <!-- Resource estimates -->
+  <section class="mt-8">
+    <h2 class="text-sm font-semibold uppercase tracking-wide text-gray-400">📦 Resource Estimates</h2>
+    <div class="mt-3 rounded-lg border border-editor-border bg-editor-card p-4 text-sm">
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <p class="text-xs text-gray-500">Minimum</p>
+          <p class="text-gray-200">
+            {{if $r.MinRAMMB}}{{$r.MinRAMMB}}MB RAM{{end}}
+            {{if $r.MinCPU}}· {{$r.MinCPU}} vCPU{{end}}
+          </p>
+        </div>
+        <div>
+          <p class="text-xs text-gray-500">Recommended</p>
+          <p class="text-gray-200">
+            {{if $r.RecRAMMB}}{{$r.RecRAMMB}}MB RAM{{end}}
+            {{if $r.StorageGB}}· {{$r.StorageGB}}GB storage{{end}}
+          </p>
+        </div>
+      </div>
+      {{if $r.EstRPS}}<p class="mt-2 text-xs text-gray-500">Estimated capacity: ~{{$r.EstRPS}} req/s</p>{{end}}
+      {{if $r.ResourceReasoning}}<p class="mt-3 text-gray-400">{{$r.ResourceReasoning}}</p>{{end}}
+    </div>
+  </section>
+
+  <!-- Platforms -->
+  {{if $r.Platforms}}
+  <section class="mt-8">
+    <h2 class="text-sm font-semibold uppercase tracking-wide text-gray-400">🚀 Deploy To</h2>
+    <div class="mt-3 space-y-3">
+      {{range $r.Platforms}}
+      <div class="rounded-lg border border-editor-border bg-editor-card p-4">
+        <div class="flex items-center justify-between">
+          <span class="font-medium text-white">{{.rank}}. {{.name}}</span>
+          <span class="text-sm text-gray-400">{{.monthly_usd}}</span>
+        </div>
+        <p class="mt-1 text-xs text-gray-500">{{.instance_type}}</p>
+        <p class="mt-2 text-sm text-gray-300">{{.reasoning}}</p>
+      </div>
+      {{end}}
+    </div>
+  </section>
+  {{end}}
+
+  <!-- Generated files (Phase 5) -->
+  <section class="mt-8 mb-12">
+    <h2 class="text-sm font-semibold uppercase tracking-wide text-gray-400">📄 Generated Files</h2>
+    <p class="mt-3 text-sm text-gray-500">Deployment file generation and download land in a later phase.</p>
+  </section>
+
+</main>
+</body>
+</html>
+{{end}}
