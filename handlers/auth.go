@@ -37,13 +37,14 @@ func RegisterPage(deps Deps) http.HandlerFunc {
 
 // Register godoc
 // @Summary      Create an account
-// @Description  Validates name/email/password (min 8 chars), bcrypt-hashes the password (cost 12), and creates an unverified user. Does NOT create a session — a 6-digit OTP is emailed and the user is redirected to /verify-email; login is blocked until the OTP is confirmed. Duplicate emails and validation failures re-render the form with 200 and an inline error.
+// @Description  Validates name/email/password (min 8 chars, must match confirm_password), bcrypt-hashes the password (cost 12), and creates an unverified user. Does NOT create a session — a 6-digit OTP is emailed and the user is redirected to /verify-email; login is blocked until the OTP is confirmed. Duplicate emails and validation failures re-render the form with 200 and an inline error.
 // @Tags         auth
 // @Accept       x-www-form-urlencoded
 // @Produce      html
-// @Param        name      formData  string  true  "Full name"
-// @Param        email     formData  string  true  "Email address"
-// @Param        password  formData  string  true  "Password, minimum 8 characters"
+// @Param        name              formData  string  true  "Full name"
+// @Param        email             formData  string  true  "Email address"
+// @Param        password          formData  string  true  "Password, minimum 8 characters"
+// @Param        confirm_password  formData  string  true  "Must match password"
 // @Success      303  {string}  string  "Redirects to /verify-email?email=..."
 // @Success      200  {string}  string  "Validation failed or email already registered — form re-rendered with error"
 // @Router       /register [post]
@@ -57,6 +58,7 @@ func Register(deps Deps) http.HandlerFunc {
 		name := strings.TrimSpace(r.FormValue("name"))
 		email := strings.TrimSpace(strings.ToLower(r.FormValue("email")))
 		password := r.FormValue("password")
+		confirmPassword := r.FormValue("confirm_password")
 
 		if email == "" || name == "" {
 			renderRegisterError(deps, w, "Name and email are required", name, email)
@@ -64,6 +66,10 @@ func Register(deps Deps) http.HandlerFunc {
 		}
 		if len(password) < 8 {
 			renderRegisterError(deps, w, "Password must be at least 8 characters", name, email)
+			return
+		}
+		if password != confirmPassword {
+			renderRegisterError(deps, w, "Passwords do not match", name, email)
 			return
 		}
 
@@ -380,12 +386,13 @@ func ResetPasswordPage(deps Deps) http.HandlerFunc {
 
 // ResetPassword godoc
 // @Summary      Set a new password
-// @Description  Validates the single-use token, updates the bcrypt hash (cost 12), consumes the token, and deletes every existing session for the account (forcing re-authentication everywhere) before redirecting to /login.
+// @Description  Validates the single-use token and that password matches confirm_password, updates the bcrypt hash (cost 12), consumes the token, and deletes every existing session for the account (forcing re-authentication everywhere) before redirecting to /login.
 // @Tags         auth
 // @Accept       x-www-form-urlencoded
 // @Produce      html
-// @Param        token     formData  string  true  "Password reset token"
-// @Param        password  formData  string  true  "New password, minimum 8 characters"
+// @Param        token             formData  string  true  "Password reset token"
+// @Param        password          formData  string  true  "New password, minimum 8 characters"
+// @Param        confirm_password  formData  string  true  "Must match password"
 // @Success      303  {string}  string  "Redirects to /login?reset=1"
 // @Success      200  {string}  string  "Invalid/expired token or validation error — form re-rendered"
 // @Router       /reset-password [post]
@@ -397,6 +404,7 @@ func ResetPassword(deps Deps) http.HandlerFunc {
 		}
 		token := r.FormValue("token")
 		password := r.FormValue("password")
+		confirmPassword := r.FormValue("confirm_password")
 
 		reset, err := models.FindValidPasswordReset(r.Context(), deps.Pool, token)
 		if err != nil {
@@ -407,6 +415,12 @@ func ResetPassword(deps Deps) http.HandlerFunc {
 		if len(password) < 8 {
 			deps.Render(w, "reset-password", map[string]any{
 				"Title": "Reset Password", "Token": token, "Error": "Password must be at least 8 characters",
+			})
+			return
+		}
+		if password != confirmPassword {
+			deps.Render(w, "reset-password", map[string]any{
+				"Title": "Reset Password", "Token": token, "Error": "Passwords do not match",
 			})
 			return
 		}
