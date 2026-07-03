@@ -16,7 +16,7 @@ import (
 
 // ReportView godoc
 // @Summary      View an analysis report
-// @Description  Renders the full deployment readiness report for a public slug: readiness score, detected stack, secret findings, infrastructure gaps, Claude's semantic analysis, resource estimates, platform recommendations, and generated deployment files. Anonymous-submitted reports expire after 7 days; logged-in users' reports are permanent. Owners additionally see rescan (GitHub-sourced only) and delete actions.
+// @Description  Renders the deployment readiness report for a public slug. Anyone can view the score and detected stack; the full report (findings, resources, platforms, files) requires being logged in — as any user, not just the report's owner, so shared links still work between registered users. Anonymous-submitted reports expire after 7 days; logged-in users' reports are permanent. Owners additionally see rescan (GitHub-sourced only) and delete actions.
 // @Tags         web
 // @Produce      html
 // @Param        slug  path  string  true  "Report slug"
@@ -49,27 +49,34 @@ func ReportView(deps Deps) http.HandlerFunc {
 		}
 
 		deps.Render(w, "report-index", map[string]any{
-			"Title":     "Report",
-			"User":      user,
-			"AppURL":    deps.AppURL,
-			"Report":    report,
-			"IsOwner":   isOwner,
-			"InputType": inputType,
+			"Title":         "Report",
+			"User":          user,
+			"AppURL":        deps.AppURL,
+			"Report":        report,
+			"IsOwner":       isOwner,
+			"InputType":     inputType,
+			"Authenticated": user != nil,
 		})
 	}
 }
 
 // ReportDownload godoc
 // @Summary      Download a report's generated deployment files
-// @Description  Zips the report's generated_files (Dockerfile, docker-compose.yml, .env.example, CI workflow, DEPLOYMENT.md, and platform config where applicable) and streams it as an attachment. Same access rule as viewing the report — no additional ownership check.
+// @Description  Zips the report's generated_files (Dockerfile, docker-compose.yml, .env.example, CI workflow, DEPLOYMENT.md, and platform config where applicable) and streams it as an attachment. Requires being logged in (as any user, same rule as viewing the full report) — no additional ownership check beyond that.
 // @Tags         web
 // @Produce      application/zip
 // @Param        slug  path  string  true  "Report slug"
 // @Success      200  {file}    file    "deployable-<slug>.zip"
+// @Failure      401  {string}  string  "Sign in to download"
 // @Failure      404  {string}  string  "Unknown/expired report, or no generated files"
 // @Router       /report/{slug}/download [get]
 func ReportDownload(deps Deps) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		if user, _ := middleware.UserFromContext(r.Context()); user == nil {
+			http.Error(w, "sign in to download this report's generated files", http.StatusUnauthorized)
+			return
+		}
+
 		slug := chi.URLParam(r, "slug")
 
 		report, err := models.FindReportBySlug(r.Context(), deps.Pool, slug)
