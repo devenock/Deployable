@@ -18,15 +18,30 @@ const (
 	sessionMaxAgeSec = 60 * 60 * 24 * 30 // 30 days
 )
 
-// RegisterPage renders the registration form.
+// RegisterPage godoc
+// @Summary      Registration form
+// @Tags         auth
+// @Produce      html
+// @Success      200  {string}  string  "HTML form"
+// @Router       /register [get]
 func RegisterPage(deps Deps) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		deps.Render(w, "register", map[string]any{"Title": "Register"})
 	}
 }
 
-// Register validates the submitted name/email/password, creates the user
-// and an initial session, sets the session cookie, and redirects to /analyze.
+// Register godoc
+// @Summary      Create an account
+// @Description  Validates name/email/password (min 8 chars), bcrypt-hashes the password (cost 12), creates the user and an initial session, and sets the session_id cookie (HttpOnly, SameSite=Lax, 30-day expiry). Duplicate emails and validation failures re-render the form with 200 and an inline error instead of an HTTP error status.
+// @Tags         auth
+// @Accept       x-www-form-urlencoded
+// @Produce      html
+// @Param        name      formData  string  true  "Full name"
+// @Param        email     formData  string  true  "Email address"
+// @Param        password  formData  string  true  "Password, minimum 8 characters"
+// @Success      303  {string}  string  "Redirects to /analyze; Set-Cookie: session_id=..."
+// @Success      200  {string}  string  "Validation failed or email already registered — form re-rendered with error"
+// @Router       /register [post]
 func Register(deps Deps) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if err := r.ParseForm(); err != nil {
@@ -76,16 +91,29 @@ func Register(deps Deps) http.HandlerFunc {
 	}
 }
 
-// LoginPage renders the login form.
+// LoginPage godoc
+// @Summary      Login form
+// @Tags         auth
+// @Produce      html
+// @Success      200  {string}  string  "HTML form"
+// @Router       /login [get]
 func LoginPage(deps Deps) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		deps.Render(w, "login", map[string]any{"Title": "Sign In"})
 	}
 }
 
-// Login validates credentials, creates a session, sets the session cookie,
-// and redirects to /analyze. Wrong credentials re-render the login form
-// with an error and never create a session.
+// Login godoc
+// @Summary      Sign in
+// @Description  Validates credentials against the stored bcrypt hash. On success creates a session and sets the session_id cookie. On failure (unknown email or wrong password) re-renders the login form with a generic "Invalid email or password" error — no session is created and which field was wrong is never disclosed.
+// @Tags         auth
+// @Accept       x-www-form-urlencoded
+// @Produce      html
+// @Param        email     formData  string  true  "Email address"
+// @Param        password  formData  string  true  "Password"
+// @Success      303  {string}  string  "Redirects to /analyze; Set-Cookie: session_id=..."
+// @Success      200  {string}  string  "Invalid credentials — form re-rendered with error, no session created"
+// @Router       /login [post]
 func Login(deps Deps) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if err := r.ParseForm(); err != nil {
@@ -119,7 +147,12 @@ func Login(deps Deps) http.HandlerFunc {
 	}
 }
 
-// Logout deletes the session, clears the cookie, and redirects to /login.
+// Logout godoc
+// @Summary      Sign out
+// @Description  Deletes the session from Postgres and Redis, clears the session_id cookie (Max-Age=0), and redirects to /login. Requires a session_id cookie.
+// @Tags         auth
+// @Success      303  {string}  string  "Redirects to /login; cookie cleared"
+// @Router       /logout [post]
 func Logout(deps Deps) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if cookie, err := r.Cookie(sessionCookie); err == nil && cookie.Value != "" {
