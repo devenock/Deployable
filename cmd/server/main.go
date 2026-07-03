@@ -245,6 +245,16 @@ func templateFuncs() template.FuncMap {
 		"mul":         func(a, b int) int { return a * b },
 		"currentYear": func() int { return time.Now().Year() },
 		"list":        func(items ...string) []string { return items },
+		"percent": func(cur, total int) int {
+			if total <= 0 {
+				return 0
+			}
+			p := cur * 100 / total
+			if p > 100 {
+				return 100
+			}
+			return p
+		},
 		"scoreColor": func(score int) string {
 			switch {
 			case score >= 80:
