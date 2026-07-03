@@ -138,7 +138,7 @@ func main() {
 	r.Get("/docs/*", httpSwagger.Handler(httpSwagger.URL("/docs/doc.json")))
 
 	// Public routes
-	r.Get("/", handlers.LandingHandler(deps))
+	r.With(middleware.OptionalAuth(pool, rdb)).Get("/", handlers.LandingHandler(deps))
 	r.Get("/login", handlers.LoginPage(deps))
 	r.Post("/login", handlers.Login(deps))
 	r.Get("/register", handlers.RegisterPage(deps))
@@ -237,12 +237,14 @@ func main() {
 
 func templateFuncs() template.FuncMap {
 	return template.FuncMap{
-		"lower": strings.ToLower,
-		"upper": strings.ToUpper,
-		"join":  strings.Join,
-		"add":   func(a, b int) int { return a + b },
-		"sub":   func(a, b int) int { return a - b },
-		"mul":   func(a, b int) int { return a * b },
+		"lower":       strings.ToLower,
+		"upper":       strings.ToUpper,
+		"join":        strings.Join,
+		"add":         func(a, b int) int { return a + b },
+		"sub":         func(a, b int) int { return a - b },
+		"mul":         func(a, b int) int { return a * b },
+		"currentYear": func() int { return time.Now().Year() },
+		"list":        func(items ...string) []string { return items },
 		"scoreColor": func(score int) string {
 			switch {
 			case score >= 80:
