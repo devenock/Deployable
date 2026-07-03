@@ -261,6 +261,54 @@ func ListReportsByUser(ctx context.Context, pool *pgxpool.Pool, userID uuid.UUID
 	return summaries, total, nil
 }
 
+// ListReportsForRepo returns every report ever generated for one exact
+// repo (input_ref match, not the fuzzy search ListReportsByUser does),
+// most recent first — the report history shown on that repo's Details page.
+// No pagination: a single repo's history is realistically small.
+func ListReportsForRepo(ctx context.Context, pool *pgxpool.Pool, userID uuid.UUID, fullName string) ([]*ReportSummary, error) {
+	rows, err := pool.Query(ctx, `
+		SELECT r.id, r.job_id, r.user_id, r.slug, r.is_public,
+		       r.language, r.language_version, r.framework, r.databases, r.services,
+		       r.readiness_score, r.complexity_score, r.security_score,
+		       r.deterministic_findings, r.semantic_analysis,
+		       r.min_ram_mb, r.rec_ram_mb, r.min_cpu, r.storage_gb, r.est_rps, r.resource_reasoning,
+		       r.platforms, r.generated_files,
+		       r.content_hash, r.expires_at, r.created_at,
+		       j.input_type, COALESCE(j.input_ref, '')
+		FROM reports r
+		JOIN analysis_jobs j ON j.id = r.job_id
+		WHERE r.user_id = $1 AND j.input_ref = $2
+		ORDER BY r.created_at DESC
+	`, userID, "github.com/"+fullName)
+	if err != nil {
+		return nil, fmt.Errorf("list reports for repo: %w", err)
+	}
+	defer rows.Close()
+
+	var summaries []*ReportSummary
+	for rows.Next() {
+		s := &ReportSummary{}
+		err := rows.Scan(
+			&s.ID, &s.JobID, &s.UserID, &s.Slug, &s.IsPublic,
+			&s.Language, &s.LanguageVersion, &s.Framework, &s.Databases, &s.Services,
+			&s.ReadinessScore, &s.ComplexityScore, &s.SecurityScore,
+			&s.DeterministicFindings, &s.SemanticAnalysis,
+			&s.MinRAMMB, &s.RecRAMMB, &s.MinCPU, &s.StorageGB, &s.EstRPS, &s.ResourceReasoning,
+			&s.Platforms, &s.GeneratedFiles,
+			&s.ContentHash, &s.ExpiresAt, &s.CreatedAt,
+			&s.InputType, &s.InputRef,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("scan report summary: %w", err)
+		}
+		summaries = append(summaries, s)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("list reports for repo: %w", err)
+	}
+	return summaries, nil
+}
+
 // ReportStats is an at-a-glance summary of a user's report history, shown
 // on the dashboard overview.
 type ReportStats struct {
