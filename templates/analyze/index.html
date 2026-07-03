@@ -28,7 +28,7 @@
       <span class="text-4xl">📦</span>
       <span class="text-gray-200">Drag &amp; drop your project as a ZIP</span>
       <span class="text-sm text-gray-500">or click to browse</span>
-      <span class="text-xs text-gray-600">Max 50MB · No account required</span>
+      <span class="text-xs text-gray-600">Max {{.MaxUpload}}MB · No account required</span>
       <input type="file" id="zip-input" name="file" accept=".zip" class="hidden"
              hx-post="/analyze/zip"
              hx-encoding="multipart/form-data"
@@ -40,6 +40,12 @@
       Uploading and starting analysis…
     </div>
   </form>
+
+  <p class="mt-4 text-center text-xs text-gray-600">
+    Tip: exclude <code class="text-gray-500">node_modules</code>, <code class="text-gray-500">vendor</code>,
+    <code class="text-gray-500">.git</code>, and build output before zipping — they're skipped during
+    analysis anyway and only eat into the size limit.
+  </p>
 
   <div class="mt-10 flex items-center gap-3 text-sm text-gray-500">
     <div class="h-px flex-1 bg-editor-border"></div>

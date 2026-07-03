@@ -18,7 +18,7 @@
 
     # File upload size limit (matches Go handler limit)
     request_body {
-        max_size 55MB
+        max_size 105MB
     }
 
     encode gzip

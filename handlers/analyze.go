@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -35,7 +36,12 @@ var analysisSteps = []string{
 }
 
 const (
-	defaultMaxUploadBytes  = 50 * 1024 * 1024 // 50MB
+	// defaultMaxUploadBytes bounds the *source tree* the analyzer reads —
+	// node_modules/vendor/.git/dist/build are already excluded from the
+	// walk (see walker.go's excludedDirs), so a real project's source
+	// rarely gets close to this. It's tight only when those directories
+	// are zipped in without exclusion.
+	defaultMaxUploadBytes  = 100 * 1024 * 1024 // 100MB
 	jobStateTTL            = 2 * time.Hour
 	defaultAnalysisTimeout = 180 * time.Second
 	anonReportTTLDays      = 7
@@ -51,21 +57,24 @@ const (
 func AnalyzePage(deps Deps) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		user, _ := middleware.UserFromContext(r.Context())
+		maxBytes := envInt64("MAX_UPLOAD_BYTES", defaultMaxUploadBytes)
 		deps.Render(w, "analyze-index", map[string]any{
-			"Title": "Analyze",
-			"User":  user,
+			"Title":     "Analyze",
+			"User":      user,
+			"MaxUpload": maxBytes / (1024 * 1024),
 		})
 	}
 }
 
 // AnalyzeZip godoc
 // @Summary      Submit a project as a ZIP upload
-// @Description  Validates and extracts the uploaded zip (max 50MB, zip-slip protected), creates an analysis job, and kicks off the analysis pipeline in the background. Responds with an HX-Redirect header to the processing page rather than a body — the client (HTMX) follows it as a full navigation.
+// @Description  Validates and extracts the uploaded zip (max 100MB by default, configurable via MAX_UPLOAD_BYTES; zip-slip protected), creates an analysis job, and kicks off the analysis pipeline in the background. Responds with an HX-Redirect header to the processing page rather than a body — the client (HTMX) follows it as a full navigation.
 // @Tags         web
 // @Accept       mpfd
 // @Param        file  formData  file  true  "Project source as a .zip archive"
 // @Success      200  {string}  string  "HX-Redirect header points to /analyze/{jobID}/processing"
-// @Failure      400  {string}  string  "Missing file, wrong extension, or file too large"
+// @Failure      400  {string}  string  "Missing file or wrong extension"
+// @Failure      413  {string}  string  "File exceeds the configured upload limit"
 // @Router       /analyze/zip [post]
 func AnalyzeZip(deps Deps) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -73,19 +82,27 @@ func AnalyzeZip(deps Deps) http.HandlerFunc {
 		r.Body = http.MaxBytesReader(w, r.Body, maxBytes)
 
 		if err := r.ParseMultipartForm(32 << 20); err != nil {
-			http.Error(w, "file too large or invalid form", http.StatusBadRequest)
+			var maxBytesErr *http.MaxBytesError
+			if errors.As(err, &maxBytesErr) {
+				http.Error(w, fmt.Sprintf(
+					"Your zip exceeds the %dMB upload limit. Try excluding node_modules, vendor, .git, dist, or build directories before zipping — they're not needed for analysis anyway.",
+					maxBytes/(1024*1024),
+				), http.StatusRequestEntityTooLarge)
+				return
+			}
+			http.Error(w, "Invalid or corrupted zip upload", http.StatusBadRequest)
 			return
 		}
 
 		file, header, err := r.FormFile("file")
 		if err != nil {
-			http.Error(w, "missing file", http.StatusBadRequest)
+			http.Error(w, "Missing file", http.StatusBadRequest)
 			return
 		}
 		defer file.Close()
 
 		if !strings.EqualFold(filepath.Ext(header.Filename), ".zip") {
-			http.Error(w, "file must be a .zip archive", http.StatusBadRequest)
+			http.Error(w, "File must be a .zip archive", http.StatusBadRequest)
 			return
 		}
 
