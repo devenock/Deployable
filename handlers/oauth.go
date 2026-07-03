@@ -11,17 +11,22 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"golang.org/x/oauth2"
 
+	tokencrypto "deployable/internal/crypto"
+	"deployable/middleware"
 	"deployable/models"
 )
 
 const (
-	oauthStateCookie = "oauth_state"
-	oauthStateTTL    = 10 * time.Minute
+	oauthStateCookie    = "oauth_state"
+	oauthIntentCookie   = "oauth_intent"
+	oauthReturnToCookie = "oauth_return_to"
+	oauthStateTTL       = 10 * time.Minute
 )
 
 // oauthProfile is the subset of a provider's user profile we need,
@@ -54,15 +59,22 @@ func GitHubOAuthStart(deps Deps) http.HandlerFunc {
 // @Router       /auth/github/callback [get]
 func GitHubOAuthCallback(deps Deps) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		intent, returnTo := readAndClearOAuthIntent(w, r)
+
 		if !validOAuthState(w, r) {
-			http.Redirect(w, r, "/login?oauth_error=1", http.StatusSeeOther)
+			http.Redirect(w, r, oauthErrorRedirect(intent, returnTo), http.StatusSeeOther)
 			return
 		}
 
 		token, err := deps.GitHubOAuth.Exchange(r.Context(), r.URL.Query().Get("code"))
 		if err != nil {
 			log.Printf("github oauth exchange: %v", err)
-			http.Redirect(w, r, "/login?oauth_error=1", http.StatusSeeOther)
+			http.Redirect(w, r, oauthErrorRedirect(intent, returnTo), http.StatusSeeOther)
+			return
+		}
+
+		if intent == "connect" {
+			completeGitHubConnect(w, r, deps, token, returnTo)
 			return
 		}
 
@@ -75,6 +87,101 @@ func GitHubOAuthCallback(deps Deps) http.HandlerFunc {
 
 		completeOAuthLogin(w, r, deps, "github", profile)
 	}
+}
+
+// GitHubConnectStart godoc
+// @Summary      Connect GitHub for private repository access
+// @Description  Requires an active session (see RequireAuth). Redirects to GitHub's OAuth authorize page requesting `repo` scope — broader than the read:user/user:email scope used for sign-in — so the resulting token can download private repository archives. GitHubOAuthCallback encrypts it (AES-256-GCM, ENCRYPTION_KEY) and stores it on the user record.
+// @Tags         analyze
+// @Param        return_to  query  string  false  "Local path to redirect back to after connecting (default /analyze)"
+// @Success      303  {string}  string  "Redirects to github.com/login/oauth/authorize"
+// @Router       /auth/github/connect [get]
+func GitHubConnectStart(deps Deps) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if deps.GitHubOAuth == nil || deps.GitHubOAuth.ClientID == "" {
+			http.Redirect(w, r, "/analyze?oauth_error=1", http.StatusSeeOther)
+			return
+		}
+
+		state, err := generateOAuthState()
+		if err != nil {
+			http.Redirect(w, r, "/analyze?oauth_error=1", http.StatusSeeOther)
+			return
+		}
+
+		http.SetCookie(w, &http.Cookie{Name: oauthStateCookie, Value: state, Path: "/", MaxAge: int(oauthStateTTL.Seconds()), HttpOnly: true, SameSite: http.SameSiteLaxMode})
+		http.SetCookie(w, &http.Cookie{Name: oauthIntentCookie, Value: "connect", Path: "/", MaxAge: int(oauthStateTTL.Seconds()), HttpOnly: true, SameSite: http.SameSiteLaxMode})
+		http.SetCookie(w, &http.Cookie{Name: oauthReturnToCookie, Value: sanitizeReturnTo(r.URL.Query().Get("return_to")), Path: "/", MaxAge: int(oauthStateTTL.Seconds()), HttpOnly: true, SameSite: http.SameSiteLaxMode})
+
+		repoScopeConfig := *deps.GitHubOAuth
+		repoScopeConfig.Scopes = []string{"repo"}
+		http.Redirect(w, r, repoScopeConfig.AuthCodeURL(state), http.StatusSeeOther)
+	}
+}
+
+// completeGitHubConnect stores the repo-scoped token (encrypted) on the
+// currently logged-in user and redirects back to returnTo. Requires
+// GitHubOAuthCallback's route to be wrapped in middleware.OptionalAuth so a
+// user is present in context.
+func completeGitHubConnect(w http.ResponseWriter, r *http.Request, deps Deps, token *oauth2.Token, returnTo string) {
+	user, ok := middleware.UserFromContext(r.Context())
+	if !ok {
+		http.Redirect(w, r, "/login?oauth_error=1", http.StatusSeeOther)
+		return
+	}
+
+	profile, err := fetchGitHubProfile(deps.GitHubOAuth.Client(r.Context(), token))
+	if err != nil {
+		log.Printf("fetch github profile for connect: %v", err)
+		http.Redirect(w, r, returnTo+"?oauth_error=1", http.StatusSeeOther)
+		return
+	}
+
+	encrypted, err := tokencrypto.EncryptToken(token.AccessToken)
+	if err != nil {
+		log.Printf("encrypt github token: %v", err)
+		http.Redirect(w, r, returnTo+"?oauth_error=1", http.StatusSeeOther)
+		return
+	}
+
+	if err := models.SetGitHubToken(r.Context(), deps.Pool, user.ID, encrypted, profile.ID, profile.Login); err != nil {
+		log.Printf("store github token: %v", err)
+		http.Redirect(w, r, returnTo+"?oauth_error=1", http.StatusSeeOther)
+		return
+	}
+
+	http.Redirect(w, r, returnTo+"?github_connected=1", http.StatusSeeOther)
+}
+
+// readAndClearOAuthIntent reads (and clears) the intent/return_to cookies
+// set by GitHubConnectStart. Absent cookies mean the ordinary login flow.
+func readAndClearOAuthIntent(w http.ResponseWriter, r *http.Request) (intent, returnTo string) {
+	if c, err := r.Cookie(oauthIntentCookie); err == nil {
+		intent = c.Value
+	}
+	returnTo = sanitizeReturnTo("")
+	if c, err := r.Cookie(oauthReturnToCookie); err == nil && c.Value != "" {
+		returnTo = c.Value
+	}
+	http.SetCookie(w, &http.Cookie{Name: oauthIntentCookie, Value: "", Path: "/", MaxAge: -1})
+	http.SetCookie(w, &http.Cookie{Name: oauthReturnToCookie, Value: "", Path: "/", MaxAge: -1})
+	return intent, returnTo
+}
+
+func oauthErrorRedirect(intent, returnTo string) string {
+	if intent == "connect" {
+		return returnTo + "?oauth_error=1"
+	}
+	return "/login?oauth_error=1"
+}
+
+// sanitizeReturnTo only allows a local, single-segment-root path, to avoid
+// using an attacker-supplied return_to as an open redirect.
+func sanitizeReturnTo(path string) string {
+	if path == "" || !strings.HasPrefix(path, "/") || strings.HasPrefix(path, "//") {
+		return "/analyze"
+	}
+	return path
 }
 
 // GoogleOAuthStart godoc
