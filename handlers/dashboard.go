@@ -61,6 +61,15 @@ func Dashboard(deps Deps) http.HandlerFunc {
 			deps.Render(w, "dashboard-results", data)
 			return
 		}
+
+		_, hasGitHub := githubClientForUser(deps, r, user.ID)
+		connectedRepos, err := models.ListConnectedRepos(r.Context(), deps.Pool, user.ID)
+		if err != nil {
+			log.Printf("list connected repos for dashboard: %v", err)
+		}
+		data["HasGitHub"] = hasGitHub
+		data["ConnectedRepos"] = connectedRepos
+
 		deps.Render(w, "dashboard-index", data)
 	}
 }

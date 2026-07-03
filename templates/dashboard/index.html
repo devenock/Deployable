@@ -23,7 +23,62 @@
       </a>
     </div>
 
-    <div class="fade-up mt-6 [animation-delay:60ms]">
+    <!-- Connected repositories -->
+    <div class="fade-up mt-8 rounded-xl border border-editor-border bg-editor-card/60 p-5 [animation-delay:60ms]">
+      <div class="flex items-center justify-between gap-3">
+        <h2 class="text-sm font-semibold uppercase tracking-wide text-gray-400">Connected repositories</h2>
+        {{if .HasGitHub}}
+        <button type="button"
+                hx-get="/account/github/repos" hx-target="#repo-picker" hx-swap="innerHTML"
+                onclick="document.getElementById('repo-picker-wrapper').classList.remove('hidden')"
+                class="inline-flex items-center gap-1.5 rounded-md border border-editor-border bg-editor-bg px-3 py-1.5 text-xs font-medium text-gray-300 hover:bg-editor-surface transition-colors">
+          {{template "icon-github" .}} Browse repositories
+        </button>
+        {{else}}
+        <a href="/auth/github/connect?return_to=/dashboard"
+           class="inline-flex items-center gap-1.5 rounded-md border border-editor-border bg-editor-bg px-3 py-1.5 text-xs font-medium text-gray-300 hover:bg-editor-surface transition-colors">
+          {{template "icon-github" .}} Connect GitHub
+        </a>
+        {{end}}
+      </div>
+
+      {{if .ConnectedRepos}}
+      <div class="mt-3 space-y-2">
+        {{range .ConnectedRepos}}
+        <div data-connected-repo-row class="flex items-center justify-between gap-3 rounded-md border border-editor-border bg-editor-bg px-4 py-2.5">
+          <div class="min-w-0 flex-1">
+            <span class="text-sm text-gray-200 truncate">{{.FullName}}</span>
+            {{if .Private}}<span class="ml-2 rounded-full border border-editor-border px-1.5 py-0.5 text-[10px] text-gray-500">private</span>{{end}}
+          </div>
+          <div class="flex items-center gap-2 shrink-0">
+            <button type="button"
+                    hx-post="/analyze/github" hx-vals='{"url": "github.com/{{.FullName}}"}' hx-swap="none"
+                    class="rounded-md border border-editor-border bg-editor-card px-3 py-1.5 text-xs text-gray-300 hover:bg-editor-surface transition-colors">
+              Scan
+            </button>
+            <button type="button" aria-label="Remove from watchlist"
+                    hx-delete="/account/github/repos/{{.ID}}"
+                    hx-target="closest [data-connected-repo-row]" hx-swap="outerHTML swap:0.2s"
+                    hx-confirm="Remove this repository from your watchlist? Past reports for it aren't affected."
+                    class="rounded-md border border-danger/30 bg-danger/5 p-1.5 text-danger hover:bg-danger/10 transition-colors">
+              {{template "icon-trash" $}}
+            </button>
+          </div>
+        </div>
+        {{end}}
+      </div>
+      {{else}}
+      <p class="mt-3 text-sm text-gray-500">
+        {{if .HasGitHub}}Nothing connected yet — browse your repositories above to add some.{{else}}Connect GitHub to track and rescan your repos from here.{{end}}
+      </p>
+      {{end}}
+
+      <div id="repo-picker-wrapper" class="hidden mt-4 rounded-lg border border-editor-border bg-editor-bg p-3">
+        <div id="repo-picker"></div>
+      </div>
+    </div>
+
+    <div class="fade-up mt-8 [animation-delay:80ms]">
       <div class="relative">
         <span class="pointer-events-none absolute inset-y-0 left-3 flex items-center text-gray-500">
           <svg class="h-[18px] w-[18px]" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
