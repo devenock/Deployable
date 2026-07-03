@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"errors"
 	"log"
 	"net/http"
 	"strconv"
@@ -19,6 +18,7 @@ import (
 // both for the picker's initial row list and as the response to the
 // add/remove actions themselves (hx-target="this" swaps just the button).
 type repoButtonData struct {
+	AccountID     string // github_accounts.ID this repo is being browsed/added under
 	GitHubID      int64
 	FullName      string
 	Private       bool
@@ -27,22 +27,36 @@ type repoButtonData struct {
 }
 
 // ListGitHubRepos godoc
-// @Summary      Browse your GitHub repositories
-// @Description  Requires a session cookie and a connected GitHub account (see GET /auth/github/connect). Lists the caller's repos from the GitHub API, most recently updated first, marking which are already on the watchlist. Returns a "connect GitHub" prompt instead if no token is on file.
+// @Summary      Browse one connected GitHub account's repositories
+// @Description  Requires a session cookie and ownership of the account. Lists that account's repos from the GitHub API, most recently updated first, marking which are already on the watchlist.
 // @Tags         web
 // @Produce      html
-// @Param        page  query  int  false  "Page number, 1-indexed"
+// @Param        account  query  string  true   "github_accounts row ID to browse"
+// @Param        page     query  int     false  "Page number, 1-indexed"
 // @Success      200  {string}  string  "HTML partial"
 // @Router       /account/github/repos [get]
 func ListGitHubRepos(deps Deps) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		user, _ := middleware.UserFromContext(r.Context())
 
-		client, ok := githubClientForUser(deps, r, user.ID)
-		if !ok {
-			deps.Render(w, "repo-picker-results", map[string]any{"NotConnected": true})
+		accountID, err := uuid.Parse(r.URL.Query().Get("account"))
+		if err != nil {
+			http.Error(w, "missing or invalid account", http.StatusBadRequest)
 			return
 		}
+
+		encrypted, err := models.GetGitHubAccountToken(r.Context(), deps.Pool, accountID, user.ID)
+		if err != nil {
+			http.NotFound(w, r)
+			return
+		}
+		token, err := tokencrypto.DecryptToken(encrypted)
+		if err != nil {
+			log.Printf("decrypt github token for account %s: %v", accountID, err)
+			http.Error(w, "could not load your GitHub repositories, please try again", http.StatusInternalServerError)
+			return
+		}
+		client := ghclient.NewClient(token)
 
 		page, _ := strconv.Atoi(r.URL.Query().Get("page"))
 		if page < 1 {
@@ -51,11 +65,7 @@ func ListGitHubRepos(deps Deps) http.HandlerFunc {
 
 		repos, hasMore, err := client.ListUserRepos(r.Context(), page)
 		if err != nil {
-			if errors.Is(err, ghclient.ErrUnauthenticated) {
-				deps.Render(w, "repo-picker-results", map[string]any{"NotConnected": true})
-				return
-			}
-			log.Printf("list github repos for user %s: %v", user.ID, err)
+			log.Printf("list github repos for account %s: %v", accountID, err)
 			http.Error(w, "could not load your GitHub repositories, please try again", http.StatusBadGateway)
 			return
 		}
@@ -74,6 +84,7 @@ func ListGitHubRepos(deps Deps) http.HandlerFunc {
 		rows := make([]repoButtonData, len(repos))
 		for i, repo := range repos {
 			rows[i] = repoButtonData{
+				AccountID:     accountID.String(),
 				GitHubID:      repo.ID,
 				FullName:      repo.FullName,
 				Private:       repo.Private,
@@ -84,7 +95,7 @@ func ListGitHubRepos(deps Deps) http.HandlerFunc {
 			}
 		}
 
-		data := map[string]any{"Rows": rows, "Page": page, "HasMore": hasMore}
+		data := map[string]any{"Rows": rows, "Page": page, "HasMore": hasMore, "AccountID": accountID.String()}
 		if page == 1 {
 			deps.Render(w, "repo-picker-results", data)
 		} else {
@@ -95,10 +106,11 @@ func ListGitHubRepos(deps Deps) http.HandlerFunc {
 
 // AddGitHubRepo godoc
 // @Summary      Add a repository to your watchlist
-// @Description  Requires a session cookie. Adds (or refreshes, if already added) a repo on the caller's connected-repos watchlist — this only tracks it, it doesn't scan it. Trusts the client-supplied repo metadata (matching the picker it came from) rather than re-verifying against GitHub, since the watchlist is a personal list scoped to the caller and scanning always re-validates against the real repo anyway.
+// @Description  Requires a session cookie. Adds (or refreshes, if already added) a repo on the caller's connected-repos watchlist under the given account — this only tracks it, it doesn't scan it. Trusts the client-supplied repo metadata (matching the picker it came from) rather than re-verifying against GitHub, since the watchlist is a personal list scoped to the caller and scanning always re-validates against the real repo anyway.
 // @Tags         web
 // @Accept       x-www-form-urlencoded
 // @Produce      html
+// @Param        account_id      formData  string  true   "github_accounts row ID this repo was browsed under"
 // @Param        github_id       formData  int     true   "GitHub's numeric repository ID"
 // @Param        full_name       formData  string  true   "owner/repo"
 // @Param        private         formData  bool    false  "Whether the repo is private"
@@ -118,11 +130,15 @@ func AddGitHubRepo(deps Deps) http.HandlerFunc {
 			http.Error(w, "invalid repository", http.StatusBadRequest)
 			return
 		}
+		var accountID *uuid.UUID
+		if id, err := uuid.Parse(r.FormValue("account_id")); err == nil {
+			accountID = &id
+		}
 		fullName := r.FormValue("full_name")
 		private := r.FormValue("private") == "true"
 		defaultBranch := r.FormValue("default_branch")
 
-		repo, err := models.AddConnectedRepo(r.Context(), deps.Pool, user.ID, githubID, fullName, private, defaultBranch)
+		repo, err := models.AddConnectedRepo(r.Context(), deps.Pool, user.ID, accountID, githubID, fullName, private, defaultBranch)
 		if err != nil {
 			log.Printf("add connected repo for user %s: %v", user.ID, err)
 			http.Error(w, "could not add repository", http.StatusInternalServerError)
@@ -130,6 +146,7 @@ func AddGitHubRepo(deps Deps) http.HandlerFunc {
 		}
 
 		deps.Render(w, "repo-action-button", repoButtonData{
+			AccountID:     r.FormValue("account_id"),
 			GitHubID:      repo.GitHubID,
 			FullName:      repo.FullName,
 			Private:       repo.Private,
@@ -146,6 +163,7 @@ func AddGitHubRepo(deps Deps) http.HandlerFunc {
 // @Produce      html
 // @Param        id              path   string  true   "connected_repos row ID"
 // @Param        render          query  string  false  "Set to 'button' to get the re-rendered Add button instead of an empty response"
+// @Param        account_id      query  string  false  "github_accounts row ID (only used with render=button)"
 // @Param        github_id       query  int     false  "GitHub's numeric repository ID (only used with render=button)"
 // @Param        full_name       query  string  false  "owner/repo (only used with render=button)"
 // @Param        private         query  bool    false  "Whether the repo is private (only used with render=button)"
@@ -178,6 +196,7 @@ func RemoveGitHubRepo(deps Deps) http.HandlerFunc {
 		if r.URL.Query().Get("render") == "button" {
 			githubID, _ := strconv.ParseInt(r.URL.Query().Get("github_id"), 10, 64)
 			deps.Render(w, "repo-action-button", repoButtonData{
+				AccountID:     r.URL.Query().Get("account_id"),
 				GitHubID:      githubID,
 				FullName:      r.URL.Query().Get("full_name"),
 				Private:       r.URL.Query().Get("private") == "true",
@@ -190,18 +209,85 @@ func RemoveGitHubRepo(deps Deps) http.HandlerFunc {
 	}
 }
 
-// githubClientForUser builds a GitHub API client authenticated with the
-// user's stored token. ok is false if they haven't connected GitHub (or the
-// stored token failed to decrypt) — callers should show a connect prompt.
-func githubClientForUser(deps Deps, r *http.Request, userID uuid.UUID) (*ghclient.Client, bool) {
-	encrypted, err := models.GetGitHubToken(r.Context(), deps.Pool, userID)
-	if err != nil {
-		return nil, false
+// RemoveGitHubAccount godoc
+// @Summary      Disconnect a GitHub account
+// @Description  Requires a session cookie and ownership. Any connected_repos entries added through this account are removed too (they can't be scanned via it anymore); reports already generated from them are untouched (a different table, unaffected by this).
+// @Tags         web
+// @Param        id  path  string  true  "github_accounts row ID"
+// @Success      200  {string}  string  "Disconnected"
+// @Failure      404  {string}  string  "Unknown account, or not the owner"
+// @Router       /account/github/accounts/{id} [delete]
+func RemoveGitHubAccount(deps Deps) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		user, _ := middleware.UserFromContext(r.Context())
+
+		id, err := uuid.Parse(chi.URLParam(r, "id"))
+		if err != nil {
+			http.NotFound(w, r)
+			return
+		}
+
+		if err := models.RemoveGitHubAccount(r.Context(), deps.Pool, id, user.ID); err != nil {
+			http.NotFound(w, r)
+			return
+		}
+
+		w.WriteHeader(http.StatusOK)
 	}
-	token, err := tokencrypto.DecryptToken(encrypted)
-	if err != nil {
-		log.Printf("decrypt github token for user %s: %v", userID, err)
-		return nil, false
+}
+
+// RepoDetails godoc
+// @Summary      One connected repo's details and report history
+// @Description  Requires a session cookie and ownership of the watchlist entry. Shows the repo's metadata and every report ever generated for it (not just the most recent, unlike the flat Reports list).
+// @Tags         web
+// @Produce      html
+// @Param        id  path  string  true  "connected_repos row ID"
+// @Success      200  {string}  string  "HTML page"
+// @Failure      404  {string}  string  "Unknown watchlist entry, or not the owner"
+// @Router       /dashboard/repos/{id} [get]
+func RepoDetails(deps Deps) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		user, _ := middleware.UserFromContext(r.Context())
+
+		id, err := uuid.Parse(chi.URLParam(r, "id"))
+		if err != nil {
+			http.NotFound(w, r)
+			return
+		}
+
+		repo, err := models.FindConnectedRepo(r.Context(), deps.Pool, id, user.ID)
+		if err != nil {
+			http.NotFound(w, r)
+			return
+		}
+
+		var account *models.GitHubAccount
+		if repo.GitHubAccountID != nil {
+			accounts, err := models.ListGitHubAccounts(r.Context(), deps.Pool, user.ID)
+			if err == nil {
+				for _, a := range accounts {
+					if a.ID == *repo.GitHubAccountID {
+						account = a
+						break
+					}
+				}
+			}
+		}
+
+		reports, err := models.ListReportsForRepo(r.Context(), deps.Pool, user.ID, repo.FullName)
+		if err != nil {
+			log.Printf("list reports for repo %s: %v", repo.FullName, err)
+			http.Error(w, "could not load report history", http.StatusInternalServerError)
+			return
+		}
+
+		deps.Render(w, "repo-details", map[string]any{
+			"Title":     repo.FullName,
+			"User":      user,
+			"ActiveNav": "dashboard",
+			"Repo":      repo,
+			"Account":   account,
+			"Reports":   reports,
+		})
 	}
-	return ghclient.NewClient(token), true
 }
