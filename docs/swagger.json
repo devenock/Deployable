@@ -141,6 +141,106 @@
                 }
             }
         },
+        "/auth/github": {
+            "get": {
+                "description": "Redirects to GitHub's OAuth authorize page. Sets a short-lived oauth_state cookie for CSRF protection, checked on callback.",
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Start GitHub sign-in",
+                "responses": {
+                    "303": {
+                        "description": "Redirects to github.com/login/oauth/authorize",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/github/callback": {
+            "get": {
+                "description": "Exchanges the code for a token, fetches the GitHub profile (id, login, primary verified email), links-or-creates the account by GitHub ID — falling back to matching an existing account by email — trusts the provider-verified email, creates a session, and redirects to /analyze.",
+                "tags": [
+                    "auth"
+                ],
+                "summary": "GitHub OAuth callback",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Authorization code from GitHub",
+                        "name": "code",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "CSRF state, must match the oauth_state cookie",
+                        "name": "state",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "303": {
+                        "description": "Redirects to /login?oauth_error=1 on failure",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/google": {
+            "get": {
+                "description": "Redirects to Google's OAuth consent page. Sets a short-lived oauth_state cookie for CSRF protection, checked on callback.",
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Start Google sign-in",
+                "responses": {
+                    "303": {
+                        "description": "Redirects to accounts.google.com/o/oauth2/auth",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/google/callback": {
+            "get": {
+                "description": "Exchanges the code for a token, fetches the Google profile (sub, verified email, name), links-or-creates the account by Google ID — falling back to matching an existing account by email — trusts the provider-verified email, creates a session, and redirects to /analyze.",
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Google OAuth callback",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Authorization code from Google",
+                        "name": "code",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "CSRF state, must match the oauth_state cookie",
+                        "name": "state",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "303": {
+                        "description": "Redirects to /login?oauth_error=1 on failure",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/dashboard": {
             "get": {
                 "description": "Requires a valid session_id cookie. Saved reports list lands in Phase 5.",
@@ -157,6 +257,55 @@
                     },
                     "501": {
                         "description": "not implemented",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/forgot-password": {
+            "get": {
+                "produces": [
+                    "text/html"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Forgot-password form",
+                "responses": {
+                    "200": {
+                        "description": "HTML form",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Always responds with the same generic notice regardless of whether the email is registered, to avoid account enumeration. If it is, a single-use reset link (1-hour expiry) is emailed.",
+                "consumes": [
+                    "application/x-www-form-urlencoded"
+                ],
+                "produces": [
+                    "text/html"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Request a password reset link",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Email address",
+                        "name": "email",
+                        "in": "formData",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Generic confirmation notice",
                         "schema": {
                             "type": "string"
                         }
@@ -199,6 +348,26 @@
                     "auth"
                 ],
                 "summary": "Login form",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Set to 1 after successful email verification, shows a confirmation notice",
+                        "name": "verified",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Set to 1 after a successful password reset, shows a confirmation notice",
+                        "name": "reset",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Set to 1 when GitHub/Google sign-in fails or is not configured, shows an error",
+                        "name": "oauth_error",
+                        "in": "query"
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "HTML form",
@@ -209,7 +378,7 @@
                 }
             },
             "post": {
-                "description": "Validates credentials against the stored bcrypt hash. On success creates a session and sets the session_id cookie. On failure (unknown email or wrong password) re-renders the login form with a generic \"Invalid email or password\" error — no session is created and which field was wrong is never disclosed.",
+                "description": "Validates credentials against the stored bcrypt hash, then requires the account's email to be verified. On success creates a session, sets the session_id cookie, records last_login_at, and emails a welcome message the first time this succeeds for the account. On failure re-renders the login form with a generic error — no session is created and which field was wrong is never disclosed.",
                 "consumes": [
                     "application/x-www-form-urlencoded"
                 ],
@@ -238,7 +407,7 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "Invalid credentials — form re-rendered with error, no session created",
+                        "description": "Invalid credentials or unverified email — form re-rendered with error, no session created",
                         "schema": {
                             "type": "string"
                         }
@@ -288,7 +457,7 @@
                 }
             },
             "post": {
-                "description": "Validates name/email/password (min 8 chars), bcrypt-hashes the password (cost 12), creates the user and an initial session, and sets the session_id cookie (HttpOnly, SameSite=Lax, 30-day expiry). Duplicate emails and validation failures re-render the form with 200 and an inline error instead of an HTTP error status.",
+                "description": "Validates name/email/password (min 8 chars), bcrypt-hashes the password (cost 12), and creates an unverified user. Does NOT create a session — a 6-digit OTP is emailed and the user is redirected to /verify-email; login is blocked until the OTP is confirmed. Duplicate emails and validation failures re-render the form with 200 and an inline error.",
                 "consumes": [
                     "application/x-www-form-urlencoded"
                 ],
@@ -330,7 +499,182 @@
                         }
                     },
                     "303": {
-                        "description": "Redirects to /analyze; Set-Cookie: session_id=...",
+                        "description": "Redirects to /verify-email?email=...",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/resend-otp": {
+            "post": {
+                "description": "Issues and emails a new OTP, subject to a 60-second cooldown since the last one. Always responds with the same generic notice regardless of whether the account exists or is already verified, to avoid leaking account state.",
+                "consumes": [
+                    "application/x-www-form-urlencoded"
+                ],
+                "produces": [
+                    "text/html"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Resend the verification code",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Email address to resend the code to",
+                        "name": "email",
+                        "in": "formData",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Verify-email form re-rendered with a notice",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/reset-password": {
+            "get": {
+                "description": "Validates the token from the emailed link before showing the new-password form.",
+                "produces": [
+                    "text/html"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Reset-password form",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Password reset token",
+                        "name": "token",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "HTML form, or an invalid/expired notice",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Validates the single-use token, updates the bcrypt hash (cost 12), consumes the token, and deletes every existing session for the account (forcing re-authentication everywhere) before redirecting to /login.",
+                "consumes": [
+                    "application/x-www-form-urlencoded"
+                ],
+                "produces": [
+                    "text/html"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Set a new password",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Password reset token",
+                        "name": "token",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "New password, minimum 8 characters",
+                        "name": "password",
+                        "in": "formData",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Invalid/expired token or validation error — form re-rendered",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "303": {
+                        "description": "Redirects to /login?reset=1",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/verify-email": {
+            "get": {
+                "description": "Shows the OTP entry form for the email address passed as a query param.",
+                "produces": [
+                    "text/html"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Email verification form",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Email address to verify",
+                        "name": "email",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "HTML form",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Validates the 6-digit code against the most recently issued OTP for the account (15-minute expiry, 5 attempt limit). On success marks the account verified and redirects to /login. Does not create a session — the user still needs to sign in.",
+                "consumes": [
+                    "application/x-www-form-urlencoded"
+                ],
+                "produces": [
+                    "text/html"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Confirm the OTP sent at registration",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Email address being verified",
+                        "name": "email",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "6-digit code from the verification email",
+                        "name": "code",
+                        "in": "formData",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Invalid, expired, or locked code — form re-rendered with error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "303": {
+                        "description": "Redirects to /login?verified=1",
                         "schema": {
                             "type": "string"
                         }
