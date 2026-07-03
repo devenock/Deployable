@@ -29,6 +29,16 @@
     </div>
     {{end}}
 
+    {{if not .User}}
+    <div id="recent-reports-section" class="hidden mt-6">
+      <p class="text-xs uppercase tracking-wide text-gray-500">Recent scans on this device</p>
+      <div id="recent-reports-list" class="mt-2 space-y-1.5"></div>
+      <p class="mt-2 text-xs text-gray-600">
+        <a href="/register" class="text-brand hover:underline">Create an account</a> to keep this list permanently and access it from any device.
+      </p>
+    </div>
+    {{end}}
+
     <div data-tabs>
       <div class="fade-up mt-8 flex justify-center [animation-delay:100ms]">
         <div class="inline-flex items-center gap-1 rounded-lg border border-editor-border bg-editor-card p-1">
