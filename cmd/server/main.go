@@ -163,8 +163,15 @@ func main() {
 	r.Get("/auth/google/callback", handlers.GoogleOAuthCallback(deps))
 	r.With(middleware.RequireAuth(pool, rdb)).Get("/auth/github/connect", handlers.GitHubConnectStart(deps))
 
-	// Public report view
-	r.Get("/report/{slug}", handlers.ReportView(deps))
+	// Public report view. OptionalAuth so the nav shows signed-in state and
+	// ReportView can compute ownership (for the rescan/delete actions).
+	r.Group(func(r chi.Router) {
+		r.Use(middleware.OptionalAuth(pool, rdb))
+		r.Get("/report/{slug}", handlers.ReportView(deps))
+		r.Get("/report/{slug}/download", handlers.ReportDownload(deps))
+		r.With(middleware.RequireAuth(pool, rdb), middleware.RateLimit(rdb)).Post("/report/{slug}/rescan", handlers.ReportRescan(deps))
+		r.With(middleware.RequireAuth(pool, rdb)).Delete("/report/{slug}", handlers.ReportDelete(deps))
+	})
 
 	// Analyze — public (anonymous analysis is allowed per ARCHITECTURE.md).
 	// OptionalAuth attaches a user to the job/report when a session cookie
@@ -245,6 +252,9 @@ func templateFuncs() template.FuncMap {
 		"mul":         func(a, b int) int { return a * b },
 		"currentYear": func() int { return time.Now().Year() },
 		"list":        func(items ...string) []string { return items },
+		"fileID": func(name string) string {
+			return strings.NewReplacer("/", "-", ".", "-").Replace(name)
+		},
 		"percent": func(cur, total int) int {
 			if total <= 0 {
 				return 0
