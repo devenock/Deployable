@@ -37,20 +37,122 @@
         },
         "/analyze": {
             "get": {
-                "description": "Requires a valid session_id cookie (checked against Redis first, Postgres on cache miss). Full zip/GitHub/CLI input handling and the processing pipeline land in Phase 2 — this stub proves auth and routing work end to end.",
+                "description": "Public, rate-limited input page for starting an analysis (zip upload; GitHub/CLI tabs land in Phase 3/4). Works for anonymous visitors — if a session cookie is present the resulting job/report is attributed to that user.",
+                "produces": [
+                    "text/html"
+                ],
                 "tags": [
                     "web"
                 ],
-                "summary": "Analyze page (stub)",
+                "summary": "Analyze page",
                 "responses": {
-                    "303": {
-                        "description": "No valid session — redirects to /login",
+                    "200": {
+                        "description": "HTML page",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/analyze/zip": {
+            "post": {
+                "description": "Validates and extracts the uploaded zip (max 50MB, zip-slip protected), creates an analysis job, and kicks off the analysis pipeline in the background. Responds with an HX-Redirect header to the processing page rather than a body — the client (HTMX) follows it as a full navigation.",
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "tags": [
+                    "web"
+                ],
+                "summary": "Submit a project as a ZIP upload",
+                "parameters": [
+                    {
+                        "type": "file",
+                        "description": "Project source as a .zip archive",
+                        "name": "file",
+                        "in": "formData",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "HX-Redirect header points to /analyze/{jobID}/processing",
                         "schema": {
                             "type": "string"
                         }
                     },
-                    "501": {
-                        "description": "not implemented",
+                    "400": {
+                        "description": "Missing file, wrong extension, or file too large",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/analyze/{jobID}/processing": {
+            "get": {
+                "description": "Renders the live-progress page for a running job; the page itself polls GET /analyze/{jobID}/status every 2 seconds via HTMX.",
+                "produces": [
+                    "text/html"
+                ],
+                "tags": [
+                    "web"
+                ],
+                "summary": "Analysis processing page",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Analysis job ID",
+                        "name": "jobID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "HTML page",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "Unknown job",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/analyze/{jobID}/status": {
+            "get": {
+                "description": "HTMX polling target — returns an HTML partial reflecting current progress. Once the job completes, responds with an HX-Redirect header pointing at the report page instead of a body.",
+                "produces": [
+                    "text/html"
+                ],
+                "tags": [
+                    "web"
+                ],
+                "summary": "Poll analysis job status",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Analysis job ID",
+                        "name": "jobID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Progress partial, or HX-Redirect to /report/{slug} once complete",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "Unknown job",
                         "schema": {
                             "type": "string"
                         }
@@ -500,6 +602,41 @@
                     },
                     "303": {
                         "description": "Redirects to /verify-email?email=...",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/report/{slug}": {
+            "get": {
+                "description": "Renders the full deployment readiness report for a public slug: readiness score, detected stack, secret findings, infrastructure gaps, Claude's semantic analysis, resource estimates, and platform recommendations. Anonymous-submitted reports expire after 7 days; logged-in users' reports are permanent.",
+                "produces": [
+                    "text/html"
+                ],
+                "tags": [
+                    "web"
+                ],
+                "summary": "View an analysis report",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Report slug",
+                        "name": "slug",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "HTML report page",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "Unknown or expired report",
                         "schema": {
                             "type": "string"
                         }
