@@ -1,0 +1,51 @@
+{{define "verify-email"}}
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+{{template "head" .}}
+</head>
+<body class="bg-editor-bg text-gray-100 min-h-screen">
+{{template "nav" .}}
+{{template "flash" .}}
+
+<main class="max-w-sm mx-auto px-4 py-20">
+  <h1 class="text-2xl font-semibold text-white text-center">Verify your email</h1>
+  <p class="mt-3 text-center text-sm text-gray-400">
+    We sent a 6-digit code to <span class="text-gray-200">{{.Email}}</span>.
+    It expires in 15 minutes.
+  </p>
+
+  {{if .Error}}
+  <div class="mt-6 rounded-md border border-danger/40 bg-danger/10 px-4 py-3 text-sm text-danger">
+    {{.Error}}
+  </div>
+  {{end}}
+  {{if .Notice}}
+  <div class="mt-6 rounded-md border border-success/40 bg-success/10 px-4 py-3 text-sm text-success">
+    {{.Notice}}
+  </div>
+  {{end}}
+
+  <form method="POST" action="/verify-email" class="mt-6 space-y-4">
+    <input type="hidden" name="email" value="{{.Email}}">
+    <div>
+      <label class="block text-sm text-gray-400 mb-1" for="code">Verification code</label>
+      <input type="text" id="code" name="code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" required
+             autofocus
+             class="w-full rounded-md border border-editor-border bg-editor-card px-3 py-2 text-center text-2xl tracking-[0.5em] text-white focus:outline-none focus:ring-2 focus:ring-brand">
+    </div>
+    <button type="submit" class="w-full rounded-md bg-brand px-4 py-2 text-white font-medium hover:opacity-90">
+      Verify email
+    </button>
+  </form>
+
+  <form method="POST" action="/resend-otp" class="mt-4 text-center">
+    <input type="hidden" name="email" value="{{.Email}}">
+    <button type="submit" class="text-sm text-brand hover:underline">
+      Didn't get a code? Resend
+    </button>
+  </form>
+</main>
+</body>
+</html>
+{{end}}
