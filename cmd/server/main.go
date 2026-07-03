@@ -194,6 +194,9 @@ func main() {
 		r.Use(middleware.RequireAuth(pool, rdb))
 		r.Get("/dashboard", handlers.Dashboard(deps))
 		r.Post("/account/api-key", handlers.GenerateAPIKey(deps))
+		r.Get("/account/github/repos", handlers.ListGitHubRepos(deps))
+		r.Post("/account/github/repos", handlers.AddGitHubRepo(deps))
+		r.Delete("/account/github/repos/{id}", handlers.RemoveGitHubRepo(deps))
 	})
 
 	// REST API for CLI — same rationale as the web /analyze group: only the
