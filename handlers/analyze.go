@@ -78,9 +78,7 @@ func analyzeFormData(deps Deps, r *http.Request, user *models.User) map[string]a
 	hasGitHub := false
 	hasAPIKey := false
 	if user != nil {
-		if _, err := models.GetGitHubToken(r.Context(), deps.Pool, user.ID); err == nil {
-			hasGitHub = true
-		}
+		hasGitHub, _ = models.HasAnyGitHubAccount(r.Context(), deps.Pool, user.ID)
 		hasAPIKey, _ = models.HasAPIKey(r.Context(), deps.Pool, user.ID)
 	}
 
@@ -225,20 +223,7 @@ func AnalyzeGitHub(deps Deps) http.HandlerFunc {
 // AnalyzeGitHub and the report page's rescan action, which differ only in
 // how they arrive at (userID, owner, repo) — status == 0 means success.
 func startGitHubAnalysis(ctx context.Context, deps Deps, userID *uuid.UUID, owner, repo, ipAddress string) (job *models.AnalysisJob, status int, userMsg string) {
-	token := ""
-	if userID != nil {
-		if encrypted, err := models.GetGitHubToken(ctx, deps.Pool, *userID); err == nil {
-			if plain, err := tokencrypto.DecryptToken(encrypted); err == nil {
-				token = plain
-			} else {
-				log.Printf("decrypt github token for user %s: %v", *userID, err)
-			}
-		}
-	}
-
-	client := ghclient.NewClient(token)
-
-	info, err := client.GetRepo(ctx, owner, repo)
+	client, info, err := resolveGitHubAccess(ctx, deps, userID, owner, repo)
 	if err != nil {
 		switch {
 		case errors.Is(err, ghclient.ErrNotFound):
@@ -303,6 +288,59 @@ func startGitHubAnalysis(ctx context.Context, deps Deps, userID *uuid.UUID, owne
 	go runAnalysisPipeline(deps, j.ID, userID, extractDir, analysisRoot)
 
 	return j, 0, ""
+}
+
+// resolveGitHubAccess finds a working GitHub client for owner/repo. Tries
+// unauthenticated first — covers the public-repo majority with zero
+// DB/token overhead. For a private repo (userID != nil), tries the account
+// it's explicitly connected through if it's on the watchlist, then falls
+// back to the user's first-connected account. No "try every account" loop:
+// connected repos always resolve their account precisely via a stored
+// foreign key; this fallback is for ad-hoc pastes/rescans of repos that
+// aren't (yet) on the watchlist. Returns the original not-found/rate-limit
+// error if nothing works, so callers render the same message either way.
+func resolveGitHubAccess(ctx context.Context, deps Deps, userID *uuid.UUID, owner, repo string) (*ghclient.Client, *ghclient.RepoInfo, error) {
+	anon := ghclient.NewClient("")
+	if info, err := anon.GetRepo(ctx, owner, repo); err == nil {
+		return anon, info, nil
+	} else if userID == nil || !errors.Is(err, ghclient.ErrNotFound) {
+		return nil, nil, err
+	}
+
+	for _, encrypted := range githubTokenCandidates(ctx, deps, *userID, owner+"/"+repo) {
+		token, decErr := tokencrypto.DecryptToken(encrypted)
+		if decErr != nil {
+			log.Printf("decrypt github token for user %s: %v", *userID, decErr)
+			continue
+		}
+		c := ghclient.NewClient(token)
+		if info, err := c.GetRepo(ctx, owner, repo); err == nil {
+			return c, info, nil
+		}
+	}
+
+	return nil, nil, ghclient.ErrNotFound
+}
+
+// githubTokenCandidates returns the encrypted tokens worth trying for
+// fullName, in priority order: the account it's connected through (if it's
+// on the watchlist at all), then the user's first-connected account as a
+// single fallback — never more than two candidates.
+func githubTokenCandidates(ctx context.Context, deps Deps, userID uuid.UUID, fullName string) []string {
+	var candidates []string
+	if token, ok := models.ResolveConnectedRepoToken(ctx, deps.Pool, userID, fullName); ok {
+		candidates = append(candidates, token)
+	}
+
+	accounts, err := models.ListGitHubAccounts(ctx, deps.Pool, userID)
+	if err == nil && len(accounts) > 0 {
+		first := accounts[0].Token
+		if len(candidates) == 0 || candidates[0] != first {
+			candidates = append(candidates, first)
+		}
+	}
+
+	return candidates
 }
 
 // ProcessingPage godoc
