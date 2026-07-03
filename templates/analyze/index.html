@@ -96,12 +96,36 @@
 
   <div class="mt-10 flex items-center gap-3 text-sm text-gray-500">
     <div class="h-px flex-1 bg-editor-border"></div>
-    <span>coming soon</span>
+    <span>or use the CLI</span>
     <div class="h-px flex-1 bg-editor-border"></div>
   </div>
-  <div class="mt-4 opacity-50">
-    <div class="rounded-lg border border-editor-border bg-editor-card px-4 py-3 text-center text-sm text-gray-400">
-      💻 CLI
+
+  <div class="mt-4 rounded-lg border border-editor-border bg-editor-card px-4 py-4 text-sm">
+    <p class="text-gray-400">Install:</p>
+    <code class="mt-1 block rounded bg-black/30 px-3 py-2 text-xs text-gray-300 overflow-x-auto">curl -sSL {{.AppURL}}/install.sh | bash</code>
+    <p class="mt-3 text-gray-400">Then run in your project directory:</p>
+    <code class="mt-1 block rounded bg-black/30 px-3 py-2 text-xs text-gray-300 overflow-x-auto">deployable .</code>
+
+    <div id="api-key-section" class="mt-4 border-t border-editor-border pt-4">
+      {{if .User}}
+        <p class="text-gray-400">For a shareable report URL, add your API key:</p>
+        {{if .HasAPIKey}}
+          <code class="mt-1 block rounded bg-black/30 px-3 py-2 text-xs text-gray-300 overflow-x-auto">deployable . --api-key &lt;your key&gt;</code>
+          <button hx-post="/account/api-key" hx-target="#api-key-section" hx-swap="innerHTML"
+                  class="mt-2 text-xs text-brand hover:underline">
+            Regenerate API key (invalidates the current one)
+          </button>
+        {{else}}
+          <button hx-post="/account/api-key" hx-target="#api-key-section" hx-swap="innerHTML"
+                  class="mt-2 rounded-lg bg-brand px-4 py-2 text-xs font-medium text-white hover:bg-brand/90 transition-colors">
+            Generate API key
+          </button>
+        {{end}}
+      {{else}}
+        <p class="text-gray-400">
+          <a href="/register" class="text-brand hover:underline">Create a free account</a> to get an API key for shareable report URLs.
+        </p>
+      {{end}}
     </div>
   </div>
 </main>
@@ -120,4 +144,14 @@
 </script>
 </body>
 </html>
+{{end}}
+
+{{define "api-key-generated"}}
+<p class="text-gray-400">Your new API key (copy it now — it won't be shown again):</p>
+<code class="mt-1 block rounded bg-black/30 px-3 py-2 text-xs text-green-400 overflow-x-auto select-all">{{.APIKey}}</code>
+<code class="mt-2 block rounded bg-black/30 px-3 py-2 text-xs text-gray-300 overflow-x-auto">deployable . --api-key {{.APIKey}}</code>
+<button hx-post="/account/api-key" hx-target="#api-key-section" hx-swap="innerHTML"
+        class="mt-2 text-xs text-brand hover:underline">
+  Regenerate API key (invalidates the current one)
+</button>
 {{end}}
