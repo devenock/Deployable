@@ -4,55 +4,241 @@
 <head>
 {{template "head" .}}
 </head>
-<body class="bg-editor-bg text-gray-100 min-h-screen">
+<body class="bg-editor-bg text-gray-100 min-h-screen font-sans antialiased">
 {{template "nav" .}}
 {{template "flash" .}}
 
-<main class="max-w-5xl mx-auto px-4 py-20 text-center">
-  <h1 class="text-4xl sm:text-5xl font-bold text-white tracking-tight">
-    From vibe to production.<br>
-    <span class="text-brand">Know before you ship.</span>
-  </h1>
-  <p class="mt-6 max-w-2xl mx-auto text-lg text-gray-400">
-    Deployable analyzes your codebase for security gaps, missing config, and
-    production readiness — then tells you exactly what to fix and where to
-    deploy, before you find out the hard way.
-  </p>
+<!-- Hero -->
+<section class="relative overflow-hidden">
+  <div class="absolute inset-0 bg-grid -z-10"></div>
+  <div class="glow -z-10 top-[-10rem] left-1/2 -translate-x-1/2 h-[28rem] w-[42rem] bg-brand/20"></div>
 
-  <div class="mt-10 flex items-center justify-center gap-4">
-    <a href="/register" class="rounded-md bg-brand px-6 py-3 text-white font-medium hover:opacity-90">
-      Get Started
-    </a>
-    <a href="/login" class="rounded-md border border-editor-border px-6 py-3 text-gray-200 font-medium hover:bg-editor-surface">
-      Sign In
-    </a>
-  </div>
+  <div class="max-w-4xl mx-auto px-4 pt-24 pb-20 text-center">
+    <div class="fade-up inline-flex items-center gap-2 rounded-full border border-editor-border bg-editor-card/80 px-3.5 py-1.5 text-xs text-gray-300">
+      <span class="h-1.5 w-1.5 rounded-full bg-success"></span>
+      Free to start · No credit card · No account required
+    </div>
 
-  <div class="mt-16 grid gap-6 sm:grid-cols-3 text-left">
-    <div class="rounded-lg border border-editor-border bg-editor-card p-6">
-      <div class="text-2xl">📦</div>
-      <h3 class="mt-3 font-semibold text-white">Upload a ZIP</h3>
-      <p class="mt-2 text-sm text-gray-400">
-        Drop your project as a zip file. No account required, no repo access needed.
-      </p>
+    <h1 class="fade-up mt-7 text-4xl sm:text-6xl font-bold text-white tracking-tight [animation-delay:80ms]">
+      From vibe to production.<br>
+      <span class="gradient-text">Know before you ship.</span>
+    </h1>
+
+    <p class="fade-up mt-6 max-w-xl mx-auto text-lg text-gray-400 [animation-delay:140ms]">
+      Deployable analyzes your codebase for security gaps, missing config, and
+      production readiness — then tells you exactly what to fix and where to
+      deploy, before you find out the hard way.
+    </p>
+
+    <div class="fade-up mt-9 flex flex-col sm:flex-row items-center justify-center gap-3 [animation-delay:200ms]">
+      <a href="/analyze" class="w-full sm:w-auto rounded-md bg-brand px-6 py-3 text-white font-medium shadow-lg shadow-brand/25 hover:bg-indigo-500 transition-colors">
+        Analyze your project — free
+      </a>
+      <a href="#how-it-works" class="w-full sm:w-auto rounded-md border border-editor-border px-6 py-3 text-gray-200 font-medium hover:bg-editor-card transition-colors">
+        See how it works
+      </a>
     </div>
-    <div class="rounded-lg border border-editor-border bg-editor-card p-6">
-      <div class="text-2xl">🐙</div>
-      <h3 class="mt-3 font-semibold text-white">Paste a GitHub URL</h3>
-      <p class="mt-2 text-sm text-gray-400">
-        Public repos analyzed instantly. Private repos supported via GitHub OAuth.
-      </p>
-    </div>
-    <div class="rounded-lg border border-editor-border bg-editor-card p-6">
-      <div class="text-2xl">💻</div>
-      <h3 class="mt-3 font-semibold text-white">Use the CLI</h3>
-      <p class="mt-2 text-sm text-gray-400">
-        Run <code class="text-brand">deployable .</code> in any project directory for
-        a colored terminal report, CI-friendly.
-      </p>
+
+    <p class="fade-up mt-8 text-xs uppercase tracking-wider text-gray-600 [animation-delay:260ms]">Detects</p>
+    <div class="fade-up mt-3 flex flex-wrap items-center justify-center gap-2 [animation-delay:260ms]">
+      {{range list "Go" "Node.js" "Python" "Ruby" "Rust" "Java" "PostgreSQL" "Redis" "MongoDB"}}
+      <span class="rounded-full border border-editor-border bg-editor-card px-3 py-1 text-xs text-gray-400">{{.}}</span>
+      {{end}}
     </div>
   </div>
-</main>
+</section>
+
+<!-- Example report preview -->
+<section class="max-w-4xl mx-auto px-4 pb-24">
+  <div class="relative rounded-xl border border-editor-border bg-editor-card shadow-2xl shadow-black/40 overflow-hidden">
+    <div class="flex items-center gap-2 border-b border-editor-border bg-editor-surface px-4 py-2.5">
+      <span class="h-2.5 w-2.5 rounded-full bg-danger/70"></span>
+      <span class="h-2.5 w-2.5 rounded-full bg-warn/70"></span>
+      <span class="h-2.5 w-2.5 rounded-full bg-success/70"></span>
+      <span class="ml-3 text-xs text-gray-500">deployable.dev/report/example</span>
+      <span class="ml-auto rounded-full bg-editor-bg px-2.5 py-0.5 text-[10px] font-medium tracking-wide text-gray-500">EXAMPLE REPORT</span>
+    </div>
+
+    <div class="p-6 sm:p-8">
+      <div class="flex flex-col sm:flex-row items-start sm:items-center gap-6">
+        <div class="flex flex-col items-center justify-center rounded-lg bg-editor-bg border border-editor-border w-24 h-24 shrink-0">
+          <span class="text-3xl font-bold text-warn">72</span>
+          <span class="text-[10px] text-gray-500">/ 100</span>
+        </div>
+        <div>
+          <p class="font-medium text-white">my-saas-app · Go 1.22 · PostgreSQL + Redis</p>
+          <p class="mt-1 text-sm text-gray-400">Mostly ready. Fix 2 critical issues before deploying.</p>
+        </div>
+      </div>
+
+      <div class="mt-6 grid gap-3 sm:grid-cols-2">
+        <div class="rounded-lg border border-danger/30 bg-danger/5 px-4 py-3">
+          <p class="text-xs font-semibold text-danger">CRITICAL</p>
+          <p class="mt-1 text-sm text-gray-300">Hardcoded Postgres password in db/db.go</p>
+        </div>
+        <div class="rounded-lg border border-warn/30 bg-warn/5 px-4 py-3">
+          <p class="text-xs font-semibold text-warn">WARNING</p>
+          <p class="mt-1 text-sm text-gray-300">No health check endpoint found</p>
+        </div>
+        <div class="rounded-lg border border-editor-border bg-editor-bg px-4 py-3">
+          <p class="text-xs font-semibold text-gray-500">RESOURCES</p>
+          <p class="mt-1 text-sm text-gray-300">1GB RAM · 1 vCPU · 20GB storage</p>
+        </div>
+        <div class="rounded-lg border border-editor-border bg-editor-bg px-4 py-3">
+          <p class="text-xs font-semibold text-gray-500">BEST FIT</p>
+          <p class="mt-1 text-sm text-gray-300">Fly.io — ~$5/month</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  <p class="mt-3 text-center text-xs text-gray-600">Illustrative example — your report reflects your actual codebase.</p>
+</section>
+
+<!-- How it works -->
+<section id="how-it-works" class="border-t border-editor-border bg-editor-surface/40">
+  <div class="max-w-5xl mx-auto px-4 py-24">
+    <div class="text-center">
+      <h2 class="text-3xl font-bold text-white tracking-tight">Three ways in, one report out</h2>
+      <p class="mt-3 text-gray-400">Pick whatever's fastest for the project in front of you.</p>
+    </div>
+
+    <div class="mt-14 grid gap-6 sm:grid-cols-3">
+      <div class="rounded-lg border border-editor-border bg-editor-card p-6 hover:border-brand/40 transition-colors">
+        <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-brand/10 text-brand">
+          <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 4v11m0 0-4-4m4 4 4-4M5 17v2a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <h3 class="mt-4 font-semibold text-white">Upload a ZIP</h3>
+        <p class="mt-2 text-sm text-gray-400">
+          Drop your project as a zip file. No account required, nothing installed.
+        </p>
+        <a href="/analyze" class="mt-4 inline-block text-sm text-brand hover:underline">Try it →</a>
+      </div>
+      <div class="rounded-lg border border-editor-border bg-editor-card p-6 hover:border-brand/40 transition-colors">
+        <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-brand/10 text-brand">
+          <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 2C6.48 2 2 6.58 2 12.25c0 4.53 2.87 8.37 6.84 9.73.5.1.68-.22.68-.5v-1.94c-2.78.62-3.37-1.37-3.37-1.37-.46-1.2-1.11-1.52-1.11-1.52-.9-.63.07-.62.07-.62 1 .07 1.53 1.05 1.53 1.05.9 1.57 2.34 1.12 2.91.85.09-.67.35-1.12.63-1.38-2.22-.26-4.56-1.14-4.56-5.05 0-1.12.39-2.03 1.03-2.75-.1-.26-.45-1.3.1-2.7 0 0 .84-.28 2.75 1.05a9.3 9.3 0 0 1 5 0c1.91-1.33 2.75-1.05 2.75-1.05.55 1.4.2 2.44.1 2.7.64.72 1.03 1.63 1.03 2.75 0 3.92-2.34 4.79-4.57 5.04.36.32.68.94.68 1.9v2.82c0 .28.18.61.69.5C19.14 20.6 22 16.77 22 12.25 22 6.58 17.52 2 12 2Z" fill="currentColor"/></svg>
+        </div>
+        <h3 class="mt-4 font-semibold text-white">Paste a GitHub URL</h3>
+        <p class="mt-2 text-sm text-gray-400">
+          Public repos analyzed instantly. Private repos work after connecting GitHub.
+        </p>
+        <a href="/analyze" class="mt-4 inline-block text-sm text-brand hover:underline">Try it →</a>
+      </div>
+      <div class="rounded-lg border border-editor-border bg-editor-card p-6 hover:border-brand/40 transition-colors">
+        <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-brand/10 text-brand">
+          <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="m6 8 4 4-4 4M13 16h5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <h3 class="mt-4 font-semibold text-white">Use the CLI</h3>
+        <p class="mt-2 text-sm text-gray-400">
+          Run <code class="text-brand">deployable .</code> in any project directory — colored terminal output, CI-friendly.
+        </p>
+        <a href="#cli" class="mt-4 inline-block text-sm text-brand hover:underline">See it in action →</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Features -->
+<section class="max-w-5xl mx-auto px-4 py-24">
+  <div class="text-center">
+    <h2 class="text-3xl font-bold text-white tracking-tight">Everything you'd check manually, automated</h2>
+    <p class="mt-3 text-gray-400">Deterministic checks plus AI-driven analysis of your actual code.</p>
+  </div>
+
+  <div class="mt-14 grid gap-px overflow-hidden rounded-xl border border-editor-border bg-editor-border sm:grid-cols-2">
+    <div class="bg-editor-bg p-7">
+      <h3 class="font-semibold text-white">🔒 Security scanning</h3>
+      <p class="mt-2 text-sm text-gray-400">
+        Hardcoded API keys, database credentials, and private keys — flagged
+        with file and line, plus an AI review of auth coverage and access
+        control gaps.
+      </p>
+    </div>
+    <div class="bg-editor-bg p-7">
+      <h3 class="font-semibold text-white">🧩 Infrastructure gaps</h3>
+      <p class="mt-2 text-sm text-gray-400">
+        Missing Dockerfile, no health check endpoint, .env not gitignored,
+        no CI config, no lock file — the things that pass code review but
+        break in production.
+      </p>
+    </div>
+    <div class="bg-editor-bg p-7">
+      <h3 class="font-semibold text-white">📊 Resource estimates</h3>
+      <p class="mt-2 text-sm text-gray-400">
+        Minimum and recommended RAM, CPU, and storage, with plain-English
+        reasoning — so you're not guessing at instance sizes.
+      </p>
+    </div>
+    <div class="bg-editor-bg p-7">
+      <h3 class="font-semibold text-white">🚀 Platform recommendations</h3>
+      <p class="mt-2 text-sm text-gray-400">
+        Ranked hosting options with realistic monthly cost estimates, matched
+        to your actual stack — not generic advice.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- CLI -->
+<section id="cli" class="border-t border-editor-border bg-editor-surface/40">
+  <div class="max-w-4xl mx-auto px-4 py-24">
+    <div class="text-center">
+      <h2 class="text-3xl font-bold text-white tracking-tight">Or stay in your terminal</h2>
+      <p class="mt-3 text-gray-400">Same analysis, CI-friendly output, zero context switching.</p>
+    </div>
+
+    <div class="mt-12 rounded-xl border border-editor-border bg-[#0a0d12] shadow-2xl shadow-black/40 overflow-hidden">
+      <div class="flex items-center gap-2 border-b border-editor-border bg-editor-surface px-4 py-2.5">
+        <span class="h-2.5 w-2.5 rounded-full bg-danger/70"></span>
+        <span class="h-2.5 w-2.5 rounded-full bg-warn/70"></span>
+        <span class="h-2.5 w-2.5 rounded-full bg-success/70"></span>
+        <span class="ml-3 text-xs text-gray-500 font-mono">~/my-saas-app</span>
+      </div>
+      <pre class="p-6 text-[13px] leading-relaxed font-mono overflow-x-auto"><code><span class="text-gray-500">$</span> <span class="text-gray-200">deployable .</span>
+
+<span class="text-brand font-semibold">Deployable</span><span class="text-gray-500"> — deployment readiness checker</span>
+
+<span class="text-gray-500">→</span> Analyzing with Deployable...
+
+Readiness Score: <span class="text-warn font-semibold">72/100</span>
+Go 1.22 · Chi · PostgreSQL, Redis
+
+<span class="text-danger font-semibold">Critical Issues (2)</span>
+  <span class="text-danger">✗</span> Hardcoded Postgres password in db/db.go
+  <span class="text-danger">✗</span> No authentication on /api/admin routes
+
+<span class="text-warn font-semibold">Warnings (3)</span>
+  <span class="text-warn">⚠</span> No Dockerfile found
+  <span class="text-warn">⚠</span> DATABASE_URL missing from .env.example
+  <span class="text-warn">⚠</span> No health check endpoint
+
+<span class="text-brand font-semibold">Full report:</span> https://deployable.dev/report/8f2a1c</code></pre>
+    </div>
+
+    <div class="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
+      <code class="rounded-md border border-editor-border bg-editor-card px-4 py-2.5 text-sm text-gray-300">curl -sSL {{.AppURL}}/install.sh | bash</code>
+      <a href="/register" class="text-sm text-brand hover:underline">Get an API key for shareable reports →</a>
+    </div>
+  </div>
+</section>
+
+<!-- Final CTA -->
+<section class="relative overflow-hidden">
+  <div class="glow -z-10 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-64 w-[36rem] bg-brand/10"></div>
+  <div class="max-w-3xl mx-auto px-4 py-24 text-center">
+    <h2 class="text-3xl sm:text-4xl font-bold text-white tracking-tight">Ready to ship with confidence?</h2>
+    <p class="mt-4 text-gray-400">Free to start. No credit card. Takes under a minute.</p>
+    <div class="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
+      <a href="/analyze" class="w-full sm:w-auto rounded-md bg-brand px-6 py-3 text-white font-medium shadow-lg shadow-brand/25 hover:bg-indigo-500 transition-colors">
+        Analyze your project — free
+      </a>
+      <a href="/register" class="w-full sm:w-auto rounded-md border border-editor-border px-6 py-3 text-gray-200 font-medium hover:bg-editor-card transition-colors">
+        Create an account
+      </a>
+    </div>
+  </div>
+</section>
+
+{{template "footer" .}}
 </body>
 </html>
 {{end}}
