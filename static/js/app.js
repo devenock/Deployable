@@ -6,7 +6,38 @@ document.addEventListener('DOMContentLoaded', function () {
   initDropzones();
   recordRecentReport();
   renderRecentReports();
+  initScrollReveal();
 });
+
+// Fades/slides in any [data-reveal] element the first time it scrolls into
+// view (each element reveals once, then stops being observed). Elements can
+// carry data-reveal-delay="<ms>" for a staggered sequence — used by the
+// landing page's product-lifecycle section so the stages animate in left to
+// right instead of all appearing at once.
+function initScrollReveal() {
+  var items = document.querySelectorAll('[data-reveal]');
+  if (!items.length) return;
+
+  if (!('IntersectionObserver' in window)) {
+    items.forEach(function (el) { el.classList.add('is-revealed'); });
+    return;
+  }
+
+  var observer = new IntersectionObserver(function (entries) {
+    entries.forEach(function (entry) {
+      if (!entry.isIntersecting) return;
+      var el = entry.target;
+      var delay = el.getAttribute('data-reveal-delay');
+      if (delay) {
+        el.style.transitionDelay = delay + 'ms';
+      }
+      el.classList.add('is-revealed');
+      observer.unobserve(el);
+    });
+  }, { threshold: 0.2 });
+
+  items.forEach(function (el) { observer.observe(el); });
+}
 
 // --- anonymous "recent on this device" ---------------------------------
 //

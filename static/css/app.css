@@ -65,8 +65,76 @@ body {
   }
 }
 
+/* Scroll-triggered reveal, used by the lifecycle section — JS toggles
+   .is-revealed via IntersectionObserver (see initScrollReveal in app.js). */
+[data-reveal] {
+  opacity: 0;
+  transform: translateY(16px);
+  transition: opacity 0.6s ease, transform 0.6s ease;
+}
+[data-reveal].is-revealed {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* A small dot traveling left-to-right along a connector line, implying
+   continuous flow through the pipeline. Positioned relative to its
+   containing (relatively/absolutely positioned) connector element. */
+@keyframes deployableFlow {
+  0% {
+    left: -4px;
+    opacity: 0;
+  }
+  12% {
+    opacity: 1;
+  }
+  88% {
+    opacity: 1;
+  }
+  100% {
+    left: 100%;
+    opacity: 0;
+  }
+}
+.flow-dot {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+  background: #a5b4fc;
+  box-shadow: 0 0 8px 2px rgba(129, 140, 248, 0.55);
+  animation: deployableFlow 2.4s linear infinite;
+}
+
+/* Pulsing ring around the lifecycle stage that IS Deployable. */
+@keyframes deployablePulseRing {
+  0% {
+    box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.45);
+  }
+  70% {
+    box-shadow: 0 0 0 14px rgba(99, 102, 241, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(99, 102, 241, 0);
+  }
+}
+.pulse-ring {
+  animation: deployablePulseRing 2.2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .fade-up {
+    animation: none;
+  }
+  [data-reveal] {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+  .flow-dot,
+  .pulse-ring {
     animation: none;
   }
 }
