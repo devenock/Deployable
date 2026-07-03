@@ -16,6 +16,17 @@
 
   <div id="upload-error" class="mt-6"></div>
 
+  {{if .GitHubConnected}}
+  <div class="mt-6 rounded-md border border-green-700/40 bg-green-900/10 px-4 py-3 text-sm text-green-400">
+    GitHub connected — you can now analyze private repositories.
+  </div>
+  {{end}}
+  {{if .OAuthError}}
+  <div class="mt-6 rounded-md border border-danger/40 bg-danger/10 px-4 py-3 text-sm text-danger">
+    Could not connect GitHub. Please try again.
+  </div>
+  {{end}}
+
   <form id="zip-form" class="mt-8">
     <label for="zip-input"
            id="drop-zone"
@@ -49,13 +60,46 @@
 
   <div class="mt-10 flex items-center gap-3 text-sm text-gray-500">
     <div class="h-px flex-1 bg-editor-border"></div>
+    <span>or paste a GitHub URL</span>
+    <div class="h-px flex-1 bg-editor-border"></div>
+  </div>
+
+  <div id="github-error" class="mt-4"></div>
+
+  <form id="github-form" class="mt-4"
+        hx-post="/analyze/github"
+        hx-swap="none"
+        hx-indicator="#github-progress">
+    <div class="flex gap-2">
+      <input type="text" name="url" required
+             placeholder="github.com/owner/repository"
+             class="flex-1 rounded-lg border border-editor-border bg-editor-card px-4 py-3 text-sm text-gray-200 placeholder-gray-600 focus:border-brand focus:outline-none">
+      <button type="submit"
+              class="rounded-lg bg-brand px-5 py-3 text-sm font-medium text-white hover:bg-brand/90 transition-colors">
+        Analyze
+      </button>
+    </div>
+    <p class="mt-2 text-xs text-gray-600">
+      Public repos: no account needed. Private repos:
+      {{if .HasGitHubConnected}}
+        <span class="text-green-500">GitHub connected ✓</span>
+      {{else if .User}}
+        <a href="/auth/github/connect" class="text-brand hover:underline">Connect GitHub</a>
+      {{else}}
+        <a href="/login" class="text-brand hover:underline">log in</a>, then connect GitHub
+      {{end}}
+    </p>
+    <div id="github-progress" class="htmx-indicator mt-2 text-xs text-gray-400">
+      Fetching repository and starting analysis…
+    </div>
+  </form>
+
+  <div class="mt-10 flex items-center gap-3 text-sm text-gray-500">
+    <div class="h-px flex-1 bg-editor-border"></div>
     <span>coming soon</span>
     <div class="h-px flex-1 bg-editor-border"></div>
   </div>
-  <div class="mt-4 grid grid-cols-2 gap-4 opacity-50">
-    <div class="rounded-lg border border-editor-border bg-editor-card px-4 py-3 text-center text-sm text-gray-400">
-      🐙 GitHub URL
-    </div>
+  <div class="mt-4 opacity-50">
     <div class="rounded-lg border border-editor-border bg-editor-card px-4 py-3 text-center text-sm text-gray-400">
       💻 CLI
     </div>
@@ -63,10 +107,15 @@
 </main>
 
 <script>
-  document.body.addEventListener('htmx:responseError', function (evt) {
-    const box = document.getElementById('upload-error');
+  function showFormError(boxID, message) {
+    const box = document.getElementById(boxID);
     box.innerHTML = '<div class="rounded-md border border-danger/40 bg-danger/10 px-4 py-3 text-sm text-danger">' +
-      (evt.detail.xhr.responseText || 'Upload failed, please try again.') + '</div>';
+      (message || 'Something went wrong, please try again.') + '</div>';
+  }
+
+  document.body.addEventListener('htmx:responseError', function (evt) {
+    const boxID = evt.detail.elt && evt.detail.elt.id === 'github-form' ? 'github-error' : 'upload-error';
+    showFormError(boxID, evt.detail.xhr.responseText);
   });
 </script>
 </body>
