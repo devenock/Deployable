@@ -1,6 +1,10 @@
 package handlers
 
-import "net/http"
+import (
+	"net/http"
+
+	"deployable/middleware"
+)
 
 // LandingHandler godoc
 // @Summary      Landing page
@@ -11,8 +15,11 @@ import "net/http"
 // @Router       / [get]
 func LandingHandler(deps Deps) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		user, _ := middleware.UserFromContext(r.Context())
 		deps.Render(w, "landing", map[string]any{
-			"Title": "",
+			"Title":  "",
+			"User":   user,
+			"AppURL": deps.AppURL,
 		})
 	}
 }
