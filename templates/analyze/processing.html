@@ -1,0 +1,24 @@
+{{define "analyze-processing"}}
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+{{template "head" .}}
+</head>
+<body class="bg-editor-bg text-gray-100 min-h-screen">
+{{template "nav" .}}
+
+<main class="max-w-md mx-auto px-4 py-20">
+  <h1 class="text-2xl font-semibold text-white text-center">Analyzing your project</h1>
+
+  <div id="status-container"
+       class="mt-8"
+       hx-get="/analyze/{{.JobID}}/status"
+       hx-trigger="every 2s"
+       hx-swap="innerHTML"
+       hx-target="#status-container">
+    {{template "analyze-steps" .}}
+  </div>
+</main>
+</body>
+</html>
+{{end}}

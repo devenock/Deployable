@@ -1,0 +1,68 @@
+{{define "analyze-index"}}
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+{{template "head" .}}
+</head>
+<body class="bg-editor-bg text-gray-100 min-h-screen">
+{{template "nav" .}}
+{{template "flash" .}}
+
+<main class="max-w-2xl mx-auto px-4 py-16">
+  <h1 class="text-2xl font-semibold text-white text-center">Analyze your project</h1>
+  <p class="mt-2 text-center text-sm text-gray-400">
+    Upload a ZIP of your project to get a deployment readiness report.
+  </p>
+
+  <div id="upload-error" class="mt-6"></div>
+
+  <form id="zip-form" class="mt-8">
+    <label for="zip-input"
+           id="drop-zone"
+           class="flex flex-col items-center justify-center gap-3 rounded-lg border-2 border-dashed border-editor-border bg-editor-card px-6 py-16 text-center cursor-pointer hover:border-brand transition-colors"
+           hx-post="/analyze/zip"
+           hx-encoding="multipart/form-data"
+           hx-trigger="drop"
+           hx-swap="none"
+           hx-indicator="#upload-progress">
+      <span class="text-4xl">📦</span>
+      <span class="text-gray-200">Drag &amp; drop your project as a ZIP</span>
+      <span class="text-sm text-gray-500">or click to browse</span>
+      <span class="text-xs text-gray-600">Max 50MB · No account required</span>
+      <input type="file" id="zip-input" name="file" accept=".zip" class="hidden"
+             hx-post="/analyze/zip"
+             hx-encoding="multipart/form-data"
+             hx-trigger="change"
+             hx-swap="none"
+             hx-indicator="#upload-progress">
+    </label>
+    <div id="upload-progress" class="htmx-indicator mt-4 text-center text-sm text-gray-400">
+      Uploading and starting analysis…
+    </div>
+  </form>
+
+  <div class="mt-10 flex items-center gap-3 text-sm text-gray-500">
+    <div class="h-px flex-1 bg-editor-border"></div>
+    <span>coming soon</span>
+    <div class="h-px flex-1 bg-editor-border"></div>
+  </div>
+  <div class="mt-4 grid grid-cols-2 gap-4 opacity-50">
+    <div class="rounded-lg border border-editor-border bg-editor-card px-4 py-3 text-center text-sm text-gray-400">
+      🐙 GitHub URL
+    </div>
+    <div class="rounded-lg border border-editor-border bg-editor-card px-4 py-3 text-center text-sm text-gray-400">
+      💻 CLI
+    </div>
+  </div>
+</main>
+
+<script>
+  document.body.addEventListener('htmx:responseError', function (evt) {
+    const box = document.getElementById('upload-error');
+    box.innerHTML = '<div class="rounded-md border border-danger/40 bg-danger/10 px-4 py-3 text-sm text-danger">' +
+      (evt.detail.xhr.responseText || 'Upload failed, please try again.') + '</div>';
+  });
+</script>
+</body>
+</html>
+{{end}}

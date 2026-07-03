@@ -1,0 +1,23 @@
+{{/* analyze-steps: HTMX partial rendered both as the initial embed on the
+     processing page and as the response body of every /analyze/{jobID}/status
+     poll, so the two never visually diverge. */}}
+{{define "analyze-steps"}}
+<div class="space-y-3">
+  {{$current := .CurrentStep}}
+  {{range $i, $step := .Steps}}
+  <div class="flex items-center gap-3 {{if lt (add $i 1) $current}}text-success{{else if eq (add $i 1) $current}}text-brand{{else}}text-gray-500{{end}}">
+    <span class="w-5 text-center">
+      {{if lt (add $i 1) $current}}✓{{else if eq (add $i 1) $current}}⟳{{else}}○{{end}}
+    </span>
+    <span>{{$step}}</span>
+  </div>
+  {{end}}
+</div>
+{{if .Failed}}
+<div class="mt-6 rounded-md border border-danger/40 bg-danger/10 px-4 py-3 text-sm text-danger">
+  {{.StepMessage}}
+</div>
+{{else}}
+<p class="mt-6 text-center text-sm text-gray-400">{{.StepMessage}}</p>
+{{end}}
+{{end}}
