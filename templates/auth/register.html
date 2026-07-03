@@ -1,0 +1,50 @@
+{{define "register"}}
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+{{template "head" .}}
+</head>
+<body class="bg-editor-bg text-gray-100 min-h-screen">
+{{template "nav" .}}
+{{template "flash" .}}
+
+<main class="max-w-sm mx-auto px-4 py-20">
+  <h1 class="text-2xl font-semibold text-white text-center">Create your account</h1>
+
+  {{if .Error}}
+  <div class="mt-6 rounded-md border border-danger/40 bg-danger/10 px-4 py-3 text-sm text-danger">
+    {{.Error}}
+  </div>
+  {{end}}
+
+  <form method="POST" action="/register" class="mt-6 space-y-4">
+    <div>
+      <label class="block text-sm text-gray-400 mb-1" for="name">Name</label>
+      <input type="text" id="name" name="name" required
+             value="{{.Name}}"
+             class="w-full rounded-md border border-editor-border bg-editor-card px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-brand">
+    </div>
+    <div>
+      <label class="block text-sm text-gray-400 mb-1" for="email">Email</label>
+      <input type="email" id="email" name="email" required
+             value="{{.Email}}"
+             class="w-full rounded-md border border-editor-border bg-editor-card px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-brand">
+    </div>
+    <div>
+      <label class="block text-sm text-gray-400 mb-1" for="password">Password</label>
+      <input type="password" id="password" name="password" required minlength="8"
+             class="w-full rounded-md border border-editor-border bg-editor-card px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-brand">
+      <p class="mt-1 text-xs text-gray-500">Minimum 8 characters</p>
+    </div>
+    <button type="submit" class="w-full rounded-md bg-brand px-4 py-2 text-white font-medium hover:opacity-90">
+      Create account
+    </button>
+  </form>
+
+  <p class="mt-6 text-center text-sm text-gray-400">
+    Already have an account? <a href="/login" class="text-brand hover:underline">Sign in</a>
+  </p>
+</main>
+</body>
+</html>
+{{end}}
