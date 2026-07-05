@@ -39,12 +39,19 @@ var analysisSteps = []string{
 }
 
 const (
-	// defaultMaxUploadBytes bounds the *source tree* the analyzer reads —
-	// node_modules/vendor/.git/dist/build are already excluded from the
-	// walk (see walker.go's excludedDirs), so a real project's source
-	// rarely gets close to this. It's tight only when those directories
-	// are zipped in without exclusion.
-	defaultMaxUploadBytes  = 100 * 1024 * 1024 // 100MB
+	// defaultMaxUploadBytes bounds the *source tree* extractZip keeps —
+	// node_modules/vendor/.git/dist/build entries are skipped while
+	// extracting (see extractZip), never written to disk or counted
+	// against this, so a real project's source rarely gets close to it.
+	defaultMaxUploadBytes = 100 * 1024 * 1024 // 100MB
+
+	// defaultMaxRawUploadBytes bounds the raw zip file accepted over the
+	// wire, before any filtering — deliberately much larger than
+	// defaultMaxUploadBytes, since a project zipped without excluding
+	// node_modules/vendor/etc. can be huge even though the source that's
+	// actually kept is small.
+	defaultMaxRawUploadBytes = 512 * 1024 * 1024 // 512MB
+
 	jobStateTTL            = 2 * time.Hour
 	defaultAnalysisTimeout = 180 * time.Second
 	anonReportTTLDays      = 7
@@ -95,7 +102,7 @@ func analyzeFormData(deps Deps, r *http.Request, user *models.User) map[string]a
 
 // AnalyzeZip godoc
 // @Summary      Submit a project as a ZIP upload
-// @Description  Requires a signed-in session (see RequireAuth). Validates and extracts the uploaded zip (max 100MB by default, configurable via MAX_UPLOAD_BYTES; zip-slip protected), creates an analysis job, and kicks off the analysis pipeline in the background. Responds with an HX-Redirect header to the processing page rather than a body — the client (HTMX) follows it as a full navigation.
+// @Description  Requires a signed-in session (see RequireAuth). Accepts a zip up to MAX_RAW_UPLOAD_BYTES (512MB by default) over the wire, but filters out node_modules/vendor/.git/build-output entries during extraction — the kept source is capped separately at MAX_UPLOAD_BYTES (100MB by default; zip-slip protected). Creates an analysis job and kicks off the analysis pipeline in the background. Responds with an HX-Redirect header to the processing page rather than a body — the client (HTMX) follows it as a full navigation.
 // @Tags         web
 // @Accept       mpfd
 // @Param        file  formData  file  true  "Project source as a .zip archive"
@@ -125,14 +132,15 @@ func AnalyzeZip(deps Deps) http.HandlerFunc {
 // requirements and response format — status == 0 means success.
 func acceptZipUpload(w http.ResponseWriter, r *http.Request, deps Deps, userID *uuid.UUID) (job *models.AnalysisJob, status int, userMsg string) {
 	maxBytes := envInt64("MAX_UPLOAD_BYTES", defaultMaxUploadBytes)
-	r.Body = http.MaxBytesReader(w, r.Body, maxBytes)
+	maxRawBytes := envInt64("MAX_RAW_UPLOAD_BYTES", defaultMaxRawUploadBytes)
+	r.Body = http.MaxBytesReader(w, r.Body, maxRawBytes)
 
 	if err := r.ParseMultipartForm(32 << 20); err != nil {
 		var maxBytesErr *http.MaxBytesError
 		if errors.As(err, &maxBytesErr) {
 			return nil, http.StatusRequestEntityTooLarge, fmt.Sprintf(
-				"Your zip exceeds the %dMB upload limit. Try excluding node_modules, vendor, .git, dist, or build directories before zipping — they're not needed for analysis anyway.",
-				maxBytes/(1024*1024),
+				"Your zip is larger than the %dMB raw upload limit, even before node_modules/vendor/.git/build are filtered out. Try zipping a smaller subtree, or use the CLI (deployable .), which filters those directories before uploading anything.",
+				maxRawBytes/(1024*1024),
 			)
 		}
 		return nil, http.StatusBadRequest, "Invalid or corrupted zip upload"
@@ -176,7 +184,7 @@ func acceptZipUpload(w http.ResponseWriter, r *http.Request, deps Deps, userID *
 
 // AnalyzeGitHub godoc
 // @Summary      Submit a project via a GitHub repository URL
-// @Description  Requires a signed-in session (see RequireAuth). Parses a github.com/owner/repo URL, fetches repo metadata, and downloads its default-branch zipball (max 100MB by default, same limit and cap as direct ZIP upload). Public repos work as soon as you're signed in; private repos additionally require the requester to have connected GitHub via GET /auth/github/connect. Kicks off the same analysis pipeline as the ZIP upload path.
+// @Description  Requires a signed-in session (see RequireAuth). Parses a github.com/owner/repo URL, fetches repo metadata, and downloads its default-branch zipball (same MAX_RAW_UPLOAD_BYTES/MAX_UPLOAD_BYTES limits and node_modules/vendor/.git filtering as direct ZIP upload). Public repos work as soon as you're signed in; private repos additionally require the requester to have connected GitHub via GET /auth/github/connect. Kicks off the same analysis pipeline as the ZIP upload path.
 // @Tags         web
 // @Accept       x-www-form-urlencoded
 // @Param        url  formData  string  true  "GitHub repository URL, e.g. github.com/owner/repo"
@@ -233,6 +241,7 @@ func startGitHubAnalysis(ctx context.Context, deps Deps, userID *uuid.UUID, owne
 	}
 
 	maxBytes := envInt64("MAX_UPLOAD_BYTES", defaultMaxUploadBytes)
+	maxRawBytes := envInt64("MAX_RAW_UPLOAD_BYTES", defaultMaxRawUploadBytes)
 
 	j, err := models.CreateJob(ctx, deps.Pool, userID, "github", "github.com/"+owner+"/"+repo, ipAddress)
 	if err != nil {
@@ -241,17 +250,17 @@ func startGitHubAnalysis(ctx context.Context, deps Deps, userID *uuid.UUID, owne
 	}
 
 	zipPath := filepath.Join(tmpDir(), j.ID.String()+".zip")
-	written, err := client.DownloadZipball(ctx, owner, repo, info.DefaultBranch, zipPath, maxBytes)
+	written, err := client.DownloadZipball(ctx, owner, repo, info.DefaultBranch, zipPath, maxRawBytes)
 	if err != nil {
 		_ = os.Remove(zipPath)
 		log.Printf("download zipball %s/%s: %v", owner, repo, err)
 		return nil, http.StatusBadGateway, "Could not download the repository archive from GitHub, please try again"
 	}
-	if written > maxBytes {
+	if written > maxRawBytes {
 		_ = os.Remove(zipPath)
 		return nil, http.StatusRequestEntityTooLarge, fmt.Sprintf(
-			"This repository's archive exceeds the %dMB analysis limit.",
-			maxBytes/(1024*1024),
+			"This repository's archive exceeds the %dMB raw download limit, even before node_modules/vendor/.git/build are filtered out.",
+			maxRawBytes/(1024*1024),
 		)
 	}
 
@@ -453,6 +462,9 @@ func extractZip(src io.ReaderAt, size int64, destDir string, maxBytes int64) err
 		if strings.HasPrefix(cleanName, "..") || filepath.IsAbs(cleanName) {
 			return fmt.Errorf("unsafe path in zip: %s", f.Name)
 		}
+		if isExcludedZipPath(cleanName) {
+			continue
+		}
 		destPath := filepath.Join(cleanDest, cleanName)
 		if destPath != cleanDest && !strings.HasPrefix(destPath, cleanDest+string(os.PathSeparator)) {
 			return fmt.Errorf("zip path escapes destination: %s", f.Name)
@@ -479,6 +491,20 @@ func extractZip(src io.ReaderAt, size int64, destDir string, maxBytes int64) err
 		}
 	}
 	return nil
+}
+
+// isExcludedZipPath reports whether any path segment is a noise directory
+// the analyzer would skip anyway (node_modules, vendor, .git, build output,
+// etc. — see analyzer.ShouldExcludeDir). Filtering these out during
+// extraction, rather than after, means a project zipped without excluding
+// them first never gets written to disk or counted against maxBytes.
+func isExcludedZipPath(cleanName string) bool {
+	for _, part := range strings.Split(cleanName, string(filepath.Separator)) {
+		if analyzer.ShouldExcludeDir(part) {
+			return true
+		}
+	}
+	return false
 }
 
 func extractZipFile(f *zip.File, destPath string, maxBytes int64) error {
