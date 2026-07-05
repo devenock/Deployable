@@ -20,7 +20,7 @@
     </div>
 
     <h1 class="fade-up mt-7 text-4xl sm:text-6xl font-bold text-white tracking-tight [animation-delay:80ms]">
-      From vibe to production.<br>
+      From vibe code to production.<br>
       <span class="gradient-text">Know before you ship.</span>
     </h1>
 
@@ -41,9 +41,58 @@
 
     <p class="fade-up mt-8 text-xs uppercase tracking-wider text-gray-600 [animation-delay:260ms]">Detects</p>
     <div class="fade-up mt-3 flex flex-wrap items-center justify-center gap-2 [animation-delay:260ms]">
-      {{range list "Go" "Node.js" "Python" "Ruby" "Rust" "Java" "PostgreSQL" "Redis" "MongoDB"}}
+      {{range list "Go" "Node.js" "Python" "Ruby" "Rust" "PHP" "PostgreSQL" "Redis" "MongoDB"}}
       <span class="rounded-full border border-editor-border bg-editor-card px-3 py-1 text-xs text-gray-400">{{.}}</span>
       {{end}}
+    </div>
+  </div>
+</section>
+
+<!-- Problem -->
+<section class="border-t border-editor-border">
+  <div class="max-w-5xl mx-auto px-4 py-24">
+    <div class="text-center" data-reveal>
+      <h2 class="text-3xl font-bold text-white tracking-tight">AI writes code fast. It doesn't check if it's ready to ship.</h2>
+      <p class="mt-3 text-gray-400 max-w-2xl mx-auto">
+        The gap between "it works on my machine" and "it's safe in production" is exactly
+        where teams get burned — and it's growing as more code ships without ever being
+        fully read by a human.
+      </p>
+    </div>
+
+    <div class="mt-14 grid gap-4 sm:grid-cols-2">
+      <div class="rounded-lg border border-editor-border bg-editor-card/60 p-6" data-reveal>
+        <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-danger/10 text-lg">🕳️</div>
+        <h3 class="mt-4 font-semibold text-white">Security debt ships silently</h3>
+        <p class="mt-2 text-sm text-gray-400">
+          Hardcoded secrets, missing auth checks, and open endpoints don't show up in a
+          quick glance at a diff — they show up in an incident report.
+        </p>
+      </div>
+      <div class="rounded-lg border border-editor-border bg-editor-card/60 p-6" data-reveal data-reveal-delay="100">
+        <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-warn/10 text-lg">🎲</div>
+        <h3 class="mt-4 font-semibold text-white">Guessing at infrastructure</h3>
+        <p class="mt-2 text-sm text-gray-400">
+          Wrong instance size, no health checks, no CI — teams find out by trial and
+          error, usually after something's already live.
+        </p>
+      </div>
+      <div class="rounded-lg border border-editor-border bg-editor-card/60 p-6" data-reveal data-reveal-delay="200">
+        <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-brand/10 text-lg">🔁</div>
+        <h3 class="mt-4 font-semibold text-white">No shared bar for "ready"</h3>
+        <p class="mt-2 text-sm text-gray-400">
+          Every developer checks something different, if anything at all — there's no
+          consistent pre-deploy standard the whole team is held to.
+        </p>
+      </div>
+      <div class="rounded-lg border border-editor-border bg-editor-card/60 p-6" data-reveal data-reveal-delay="300">
+        <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-success/10 text-lg">⏱️</div>
+        <h3 class="mt-4 font-semibold text-white">Manual review doesn't scale</h3>
+        <p class="mt-2 text-sm text-gray-400">
+          A senior engineer eyeballing a PR catches some things. It won't catch a
+          hardcoded key three files deep, every time, for every project.
+        </p>
+      </div>
     </div>
   </div>
 </section>
@@ -102,7 +151,7 @@
 </section>
 
 <!-- Example report preview -->
-<section class="max-w-4xl mx-auto px-4 pb-24">
+<section class="max-w-4xl mx-auto px-4 py-24">
   <div class="relative rounded-xl border border-editor-border bg-editor-card shadow-2xl shadow-black/40 overflow-hidden">
     <div class="flex items-center gap-2 border-b border-editor-border bg-editor-surface px-4 py-2.5">
       <span class="h-2.5 w-2.5 rounded-full bg-danger/70"></span>
@@ -150,13 +199,13 @@
 <!-- How it works -->
 <section id="how-it-works" class="border-t border-editor-border bg-editor-surface/40">
   <div class="max-w-5xl mx-auto px-4 py-24">
-    <div class="text-center">
+    <div class="text-center" data-reveal>
       <h2 class="text-3xl font-bold text-white tracking-tight">Three ways in, one report out</h2>
       <p class="mt-3 text-gray-400">Pick whatever's fastest for the project in front of you.</p>
     </div>
 
     <div class="mt-14 grid gap-6 sm:grid-cols-3">
-      <div class="rounded-lg border border-editor-border bg-editor-card p-6 hover:border-brand/40 transition-colors">
+      <div class="rounded-lg border border-editor-border bg-editor-card p-6 hover:border-brand/40 transition-colors" data-reveal>
         <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-brand/10 text-brand">
           <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 4v11m0 0-4-4m4 4 4-4M5 17v2a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </div>
@@ -166,17 +215,18 @@
         </p>
         <a href="/analyze" class="mt-4 inline-block text-sm text-brand hover:underline">Try it →</a>
       </div>
-      <div class="rounded-lg border border-editor-border bg-editor-card p-6 hover:border-brand/40 transition-colors">
+      <div class="rounded-lg border border-editor-border bg-editor-card p-6 hover:border-brand/40 transition-colors" data-reveal data-reveal-delay="100">
         <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-brand/10 text-brand">
           <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 2C6.48 2 2 6.58 2 12.25c0 4.53 2.87 8.37 6.84 9.73.5.1.68-.22.68-.5v-1.94c-2.78.62-3.37-1.37-3.37-1.37-.46-1.2-1.11-1.52-1.11-1.52-.9-.63.07-.62.07-.62 1 .07 1.53 1.05 1.53 1.05.9 1.57 2.34 1.12 2.91.85.09-.67.35-1.12.63-1.38-2.22-.26-4.56-1.14-4.56-5.05 0-1.12.39-2.03 1.03-2.75-.1-.26-.45-1.3.1-2.7 0 0 .84-.28 2.75 1.05a9.3 9.3 0 0 1 5 0c1.91-1.33 2.75-1.05 2.75-1.05.55 1.4.2 2.44.1 2.7.64.72 1.03 1.63 1.03 2.75 0 3.92-2.34 4.79-4.57 5.04.36.32.68.94.68 1.9v2.82c0 .28.18.61.69.5C19.14 20.6 22 16.77 22 12.25 22 6.58 17.52 2 12 2Z" fill="currentColor"/></svg>
         </div>
-        <h3 class="mt-4 font-semibold text-white">Paste a GitHub URL</h3>
+        <h3 class="mt-4 font-semibold text-white">Connect GitHub</h3>
         <p class="mt-2 text-sm text-gray-400">
-          Public repos analyzed instantly once you're signed in. Private repos work after connecting GitHub.
+          Connect your account, import the repos you care about, and rescan with one
+          click whenever you push.
         </p>
         <a href="/analyze" class="mt-4 inline-block text-sm text-brand hover:underline">Try it →</a>
       </div>
-      <div class="rounded-lg border border-editor-border bg-editor-card p-6 hover:border-brand/40 transition-colors">
+      <div class="rounded-lg border border-editor-border bg-editor-card p-6 hover:border-brand/40 transition-colors" data-reveal data-reveal-delay="200">
         <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-brand/10 text-brand">
           <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="m6 8 4 4-4 4M13 16h5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </div>
@@ -192,12 +242,12 @@
 
 <!-- Features -->
 <section class="max-w-5xl mx-auto px-4 py-24">
-  <div class="text-center">
+  <div class="text-center" data-reveal>
     <h2 class="text-3xl font-bold text-white tracking-tight">Everything you'd check manually, automated</h2>
     <p class="mt-3 text-gray-400">Deterministic checks plus AI-driven analysis of your actual code.</p>
   </div>
 
-  <div class="mt-14 grid gap-px overflow-hidden rounded-xl border border-editor-border bg-editor-border sm:grid-cols-2">
+  <div class="mt-14 grid gap-px overflow-hidden rounded-xl border border-editor-border bg-editor-border sm:grid-cols-2 lg:grid-cols-3" data-reveal data-reveal-delay="100">
     <div class="bg-editor-bg p-7">
       <h3 class="font-semibold text-white">🔒 Security scanning</h3>
       <p class="mt-2 text-sm text-gray-400">
@@ -228,18 +278,157 @@
         to your actual stack — not generic advice.
       </p>
     </div>
+    <div class="bg-editor-bg p-7">
+      <h3 class="font-semibold text-white">📄 Ready-to-use deploy files</h3>
+      <p class="mt-2 text-sm text-gray-400">
+        Dockerfile, docker-compose.yml, a CI workflow, .env.example, and a
+        deployment guide — generated for your stack, not a generic template.
+      </p>
+    </div>
+    <div class="bg-editor-bg p-7">
+      <h3 class="font-semibold text-white">🐙 GitHub-native workflow</h3>
+      <p class="mt-2 text-sm text-gray-400">
+        Import the repos you care about once, then rescan with one click —
+        no re-uploading zips every time you push.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- Comparison -->
+<section class="border-t border-editor-border bg-editor-surface/40">
+  <div class="max-w-5xl mx-auto px-4 py-24">
+    <div class="text-center" data-reveal>
+      <h2 class="text-3xl font-bold text-white tracking-tight">Why not just review it yourself?</h2>
+      <p class="mt-3 text-gray-400 max-w-2xl mx-auto">
+        Manual review, linters, and cloud checklists each catch a slice of the
+        picture. None of them add up to one report — and none of them tell you
+        where to deploy.
+      </p>
+    </div>
+
+    <div class="mt-14 overflow-x-auto rounded-xl border border-editor-border" data-reveal data-reveal-delay="100">
+      <table class="w-full min-w-[720px] text-left text-sm">
+        <thead>
+          <tr class="border-b border-editor-border bg-editor-card/60">
+            <th class="px-5 py-4 font-medium text-gray-400">Capability</th>
+            <th class="px-5 py-4 font-medium text-gray-400">Manual review</th>
+            <th class="px-5 py-4 font-medium text-gray-400">Linters &amp; SAST</th>
+            <th class="px-5 py-4 font-medium text-gray-400">Cloud checklists</th>
+            <th class="px-5 py-4 font-semibold text-brand bg-brand/5">Deployable</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-editor-border">
+          <tr>
+            <td class="px-5 py-4 text-gray-200">Catches hardcoded secrets</td>
+            <td class="px-5 py-4 text-gray-500">Sometimes</td>
+            <td class="px-5 py-4 text-gray-500">With setup</td>
+            <td class="px-5 py-4 text-gray-600">—</td>
+            <td class="px-5 py-4 bg-brand/5 text-success font-medium">Yes</td>
+          </tr>
+          <tr>
+            <td class="px-5 py-4 text-gray-200">Understands your auth &amp; access logic</td>
+            <td class="px-5 py-4 text-gray-600">—</td>
+            <td class="px-5 py-4 text-gray-600">—</td>
+            <td class="px-5 py-4 text-gray-600">—</td>
+            <td class="px-5 py-4 bg-brand/5 text-success font-medium">Yes, via AI</td>
+          </tr>
+          <tr>
+            <td class="px-5 py-4 text-gray-200">Flags missing infra (Dockerfile, health check, CI)</td>
+            <td class="px-5 py-4 text-gray-500">Rarely</td>
+            <td class="px-5 py-4 text-gray-600">—</td>
+            <td class="px-5 py-4 text-gray-600">—</td>
+            <td class="px-5 py-4 bg-brand/5 text-success font-medium">Yes</td>
+          </tr>
+          <tr>
+            <td class="px-5 py-4 text-gray-200">Estimates hosting resources &amp; cost</td>
+            <td class="px-5 py-4 text-gray-600">—</td>
+            <td class="px-5 py-4 text-gray-600">—</td>
+            <td class="px-5 py-4 text-gray-600">—</td>
+            <td class="px-5 py-4 bg-brand/5 text-success font-medium">Yes</td>
+          </tr>
+          <tr>
+            <td class="px-5 py-4 text-gray-200">Recommends a specific platform</td>
+            <td class="px-5 py-4 text-gray-600">—</td>
+            <td class="px-5 py-4 text-gray-600">—</td>
+            <td class="px-5 py-4 text-gray-600">—</td>
+            <td class="px-5 py-4 bg-brand/5 text-success font-medium">Yes</td>
+          </tr>
+          <tr>
+            <td class="px-5 py-4 text-gray-200">Generates ready-to-use deploy files</td>
+            <td class="px-5 py-4 text-gray-600">—</td>
+            <td class="px-5 py-4 text-gray-600">—</td>
+            <td class="px-5 py-4 text-gray-600">—</td>
+            <td class="px-5 py-4 bg-brand/5 text-success font-medium">Yes</td>
+          </tr>
+          <tr>
+            <td class="px-5 py-4 text-gray-200">Same process for any language</td>
+            <td class="px-5 py-4 text-gray-500">Reviewer-dependent</td>
+            <td class="px-5 py-4 text-gray-500">Per-language setup</td>
+            <td class="px-5 py-4 text-gray-600">—</td>
+            <td class="px-5 py-4 bg-brand/5 text-success font-medium">Yes</td>
+          </tr>
+          <tr>
+            <td class="px-5 py-4 text-gray-200">Time to a result</td>
+            <td class="px-5 py-4 text-gray-500">Hours, if it happens</td>
+            <td class="px-5 py-4 text-gray-500">Minutes, after setup</td>
+            <td class="px-5 py-4 text-gray-600">N/A</td>
+            <td class="px-5 py-4 bg-brand/5 text-success font-medium">Under a minute</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- Architecture -->
+<section class="max-w-5xl mx-auto px-4 py-24">
+  <div class="text-center" data-reveal>
+    <h2 class="text-3xl font-bold text-white tracking-tight">Two layers of analysis, one report</h2>
+    <p class="mt-3 text-gray-400 max-w-2xl mx-auto">
+      Deterministic checks catch what's provably true. Claude catches what
+      requires actually understanding your code.
+    </p>
+  </div>
+
+  <div class="mt-14 grid gap-4 sm:grid-cols-3" data-reveal data-reveal-delay="100">
+    <div class="rounded-lg border border-editor-border bg-editor-card/60 p-6">
+      <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">Input</p>
+      <h3 class="mt-2 font-semibold text-white">Your codebase</h3>
+      <p class="mt-2 text-sm text-gray-400">
+        A ZIP upload, an imported GitHub repo, or the CLI pointed at a local
+        directory — same pipeline either way.
+      </p>
+    </div>
+    <div class="rounded-lg border border-brand/30 bg-brand/5 p-6">
+      <p class="text-xs font-semibold uppercase tracking-wide text-brand">Analysis</p>
+      <h3 class="mt-2 font-semibold text-white">Deterministic + AI</h3>
+      <p class="mt-2 text-sm text-gray-400">
+        Layer 1 detects your stack, scans for secrets, and checks for missing
+        infra files. Layer 2 hands the findings and key files to Claude, which
+        reasons about auth coverage, risk severity, and resource needs.
+      </p>
+    </div>
+    <div class="rounded-lg border border-editor-border bg-editor-card/60 p-6">
+      <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">Output</p>
+      <h3 class="mt-2 font-semibold text-white">A complete report</h3>
+      <p class="mt-2 text-sm text-gray-400">
+        A readiness score, categorized findings, resource estimates, ranked
+        platforms, and deployment files ready to commit.
+      </p>
+    </div>
   </div>
 </section>
 
 <!-- CLI -->
 <section id="cli" class="border-t border-editor-border bg-editor-surface/40">
   <div class="max-w-4xl mx-auto px-4 py-24">
-    <div class="text-center">
+    <div class="text-center" data-reveal>
       <h2 class="text-3xl font-bold text-white tracking-tight">Or stay in your terminal</h2>
       <p class="mt-3 text-gray-400">Same analysis, CI-friendly output, zero context switching.</p>
     </div>
 
-    <div class="mt-12 rounded-xl border border-editor-border bg-[#0a0d12] shadow-2xl shadow-black/40 overflow-hidden">
+    <div class="mt-12 rounded-xl border border-editor-border bg-[#0a0d12] shadow-2xl shadow-black/40 overflow-hidden" data-reveal data-reveal-delay="100">
       <div class="flex items-center gap-2 border-b border-editor-border bg-editor-surface px-4 py-2.5">
         <span class="h-2.5 w-2.5 rounded-full bg-danger/70"></span>
         <span class="h-2.5 w-2.5 rounded-full bg-warn/70"></span>
@@ -271,6 +460,68 @@ Go 1.22 · Chi · PostgreSQL, Redis
       <code class="rounded-md border border-editor-border bg-editor-card px-4 py-2.5 text-sm text-gray-300">curl -sSL {{.AppURL}}/install.sh | bash</code>
       <a href="/register" class="text-sm text-brand hover:underline">Get an API key for shareable reports →</a>
     </div>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section class="max-w-3xl mx-auto px-4 py-24">
+  <div class="text-center" data-reveal>
+    <h2 class="text-3xl font-bold text-white tracking-tight">Questions you're probably asking</h2>
+  </div>
+
+  <div class="mt-10 space-y-3" data-reveal data-reveal-delay="100">
+    <details class="group rounded-lg border border-editor-border bg-editor-card/60 p-5 open:pb-5">
+      <summary class="flex cursor-pointer list-none items-center justify-between font-medium text-white">
+        Is my code stored anywhere?
+        <span class="text-gray-500 transition-transform group-open:rotate-45">+</span>
+      </summary>
+      <p class="mt-3 text-sm text-gray-400">
+        Your uploaded or cloned source is analyzed in an isolated workspace and
+        deleted once the report is generated. Only the report itself — findings,
+        score, and generated deployment files — is kept.
+      </p>
+    </details>
+    <details class="group rounded-lg border border-editor-border bg-editor-card/60 p-5 open:pb-5">
+      <summary class="flex cursor-pointer list-none items-center justify-between font-medium text-white">
+        Do you support private repos?
+        <span class="text-gray-500 transition-transform group-open:rotate-45">+</span>
+      </summary>
+      <p class="mt-3 text-sm text-gray-400">
+        Yes — connect GitHub, import the repo, and Deployable uses your own
+        access to analyze it. Access tokens are encrypted at rest and never
+        exposed in a report.
+      </p>
+    </details>
+    <details class="group rounded-lg border border-editor-border bg-editor-card/60 p-5 open:pb-5">
+      <summary class="flex cursor-pointer list-none items-center justify-between font-medium text-white">
+        What languages and stacks does it detect?
+        <span class="text-gray-500 transition-transform group-open:rotate-45">+</span>
+      </summary>
+      <p class="mt-3 text-sm text-gray-400">
+        Go, Node.js, Python, Ruby, Rust, and PHP, along with common databases
+        like PostgreSQL, Redis, and MongoDB — with more on the way.
+      </p>
+    </details>
+    <details class="group rounded-lg border border-editor-border bg-editor-card/60 p-5 open:pb-5">
+      <summary class="flex cursor-pointer list-none items-center justify-between font-medium text-white">
+        Do I need to install anything?
+        <span class="text-gray-500 transition-transform group-open:rotate-45">+</span>
+      </summary>
+      <p class="mt-3 text-sm text-gray-400">
+        No — zip upload and GitHub import both run entirely in the browser. The
+        CLI is optional, for anyone who'd rather stay in the terminal or wire
+        checks into CI.
+      </p>
+    </details>
+    <details class="group rounded-lg border border-editor-border bg-editor-card/60 p-5 open:pb-5">
+      <summary class="flex cursor-pointer list-none items-center justify-between font-medium text-white">
+        Is it free?
+        <span class="text-gray-500 transition-transform group-open:rotate-45">+</span>
+      </summary>
+      <p class="mt-3 text-sm text-gray-400">
+        Yes — analyzing a project is free to start, no credit card required.
+      </p>
+    </details>
   </div>
 </section>
 
