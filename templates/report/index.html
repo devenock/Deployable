@@ -30,17 +30,30 @@
 
   <div class="max-w-4xl mx-auto px-4 py-12">
 
+    {{if .User}}
+    <a href="/dashboard?tab=reports" data-dash-nav-trigger="reports"
+       class="fade-up inline-flex items-center gap-1.5 text-sm text-gray-400 hover:text-white transition-colors">
+      ← Back to reports
+    </a>
+    {{end}}
+
     <code id="report-url" class="hidden">{{.AppURL}}/report/{{$r.Slug}}</code>
 
     <!-- Header: score + summary + actions -->
-    <div class="fade-up rounded-xl border border-editor-border bg-editor-card/90 backdrop-blur-sm p-6 shadow-2xl shadow-black/40">
+    <div class="fade-up {{if .User}}mt-4{{end}} rounded-xl border border-editor-border bg-editor-card/90 backdrop-blur-sm p-6 shadow-2xl shadow-black/40">
       <div class="flex flex-col sm:flex-row items-start sm:items-center gap-6">
         <div class="flex flex-col items-center justify-center rounded-lg bg-editor-bg border border-editor-border w-24 h-24 shrink-0">
           <span class="text-3xl font-bold {{scoreColor $r.ReadinessScore}}">{{$r.ReadinessScore}}</span>
           <span class="text-[10px] text-gray-500">/100</span>
         </div>
         <div class="min-w-0">
-          <h1 class="text-lg font-semibold text-white">
+          {{if .InputRef}}
+          <div class="flex items-center gap-2">
+            <span class="text-sm font-medium text-gray-300 truncate">{{.InputRef}}</span>
+            <span class="shrink-0 rounded-full border border-editor-border px-2 py-0.5 text-[10px] uppercase tracking-wide text-gray-500">{{.InputType}}</span>
+          </div>
+          {{end}}
+          <h1 class="{{if .InputRef}}mt-1{{end}} text-lg font-semibold text-white">
             {{if $r.Language}}{{$r.Language}}{{else}}Unknown stack{{end}}
             {{if $r.LanguageVersion}}<span class="text-gray-400 font-normal">{{$r.LanguageVersion}}</span>{{end}}
             {{if $r.Framework}}<span class="text-gray-400 font-normal">· {{$r.Framework}}</span>{{end}}
@@ -121,7 +134,7 @@
         <button type="button" data-tab-trigger="deploy" aria-selected="false"
                 class="rounded-md px-3.5 py-1.5 text-sm font-medium text-gray-400 hover:text-gray-200 transition-colors">Deploy</button>
         <button type="button" data-tab-trigger="files" aria-selected="false"
-                class="rounded-md px-3.5 py-1.5 text-sm font-medium text-gray-400 hover:text-gray-200 transition-colors">Files{{if $hasFiles}} ({{len $r.GeneratedFiles}}){{end}}</button>
+                class="rounded-md px-3.5 py-1.5 text-sm font-medium text-gray-400 hover:text-gray-200 transition-colors">Generated Files{{if $hasFiles}} ({{len $r.GeneratedFiles}}){{end}}</button>
       </div>
 
       <div class="fade-up mt-4 rounded-xl border border-editor-border bg-editor-card/90 backdrop-blur-sm p-6 shadow-2xl shadow-black/40 [animation-delay:100ms]">
@@ -288,6 +301,11 @@
         <!-- Files -->
         <div data-tab-panel="files" class="hidden">
           {{if $hasFiles}}
+          <p class="mb-4 text-sm text-gray-400">
+            Ready-to-use deployment files for this stack, generated fresh every time — regardless of what your
+            repo already has. If you already have your own Dockerfile, CI workflow, etc., treat these as a
+            reference and diff before overwriting anything.
+          </p>
           <div class="mb-4 flex justify-end">
             <a href="/report/{{$r.Slug}}/download"
                class="inline-flex items-center gap-1.5 rounded-md bg-brand px-3.5 py-2 text-xs font-medium text-white shadow-lg shadow-brand/20 hover:bg-indigo-500 transition-colors">

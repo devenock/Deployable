@@ -44,17 +44,35 @@ func ReportView(deps Deps) http.HandlerFunc {
 		isOwner := user != nil && report.UserID != nil && *report.UserID == user.ID
 
 		inputType := ""
+		inputRef := ""
 		if job, err := models.FindJobByID(r.Context(), deps.Pool, report.JobID); err == nil {
 			inputType = job.InputType
+			inputRef = job.InputRef
+		}
+
+		title := "Report"
+		if inputRef != "" {
+			title = inputRef + " · Report"
+		}
+
+		// Highlights "Reports" in the sidebar for signed-in visitors, so
+		// landing here from the reports list (or a rescan/analyze-again)
+		// doesn't feel like it dropped them somewhere untethered from the
+		// rest of the app.
+		activeNav := ""
+		if user != nil {
+			activeNav = "reports"
 		}
 
 		deps.Render(w, "report-index", map[string]any{
-			"Title":         "Report",
+			"Title":         title,
 			"User":          user,
 			"AppURL":        deps.AppURL,
 			"Report":        report,
 			"IsOwner":       isOwner,
 			"InputType":     inputType,
+			"InputRef":      inputRef,
+			"ActiveNav":     activeNav,
 			"Authenticated": user != nil,
 		})
 	}
