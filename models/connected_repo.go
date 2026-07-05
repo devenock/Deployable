@@ -103,6 +103,21 @@ func FindConnectedRepo(ctx context.Context, pool *pgxpool.Pool, id, userID uuid.
 	return r, nil
 }
 
+// IsRepoConnected reports whether fullName is on the user's watchlist —
+// the gate startGitHubAnalysis enforces so a GitHub repo can only be
+// analyzed (or rescanned) after it's been explicitly imported, never by
+// pasting an arbitrary URL.
+func IsRepoConnected(ctx context.Context, pool *pgxpool.Pool, userID uuid.UUID, fullName string) (bool, error) {
+	var exists bool
+	err := pool.QueryRow(ctx, `
+		SELECT EXISTS (SELECT 1 FROM connected_repos WHERE user_id = $1 AND full_name = $2)
+	`, userID, fullName).Scan(&exists)
+	if err != nil {
+		return false, fmt.Errorf("check connected repo: %w", err)
+	}
+	return exists, nil
+}
+
 // ResolveConnectedRepoToken finds the encrypted token for whichever GitHub
 // account fullName was connected through, if it's on the user's watchlist
 // at all. Used by the token-resolution fallback for ad-hoc (not-yet-connected)
