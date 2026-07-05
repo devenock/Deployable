@@ -48,8 +48,12 @@
   </div>
 </section>
 
-<!-- Example report preview -->
-<section class="max-w-4xl mx-auto px-4 pb-24">
+<!-- Example report preview: a faithful, static replica of the real report
+     page (see templates/report/index.html) — same header/tab structure and
+     classes, populated with illustrative data. Tabs are genuinely clickable
+     (initTabs() in app.js drives any [data-tabs] group generically), so
+     this is an interactive demo, not just a screenshot. -->
+<section class="max-w-5xl mx-auto px-4 pb-24">
   <div class="relative rounded-xl border border-editor-border bg-editor-card shadow-2xl shadow-black/40 overflow-hidden" data-reveal>
     <div class="flex items-center gap-2 border-b border-editor-border bg-editor-surface px-4 py-2.5">
       <span class="h-2.5 w-2.5 rounded-full bg-danger/70"></span>
@@ -60,33 +64,209 @@
     </div>
 
     <div class="p-6 sm:p-8">
-      <div class="flex flex-col sm:flex-row items-start sm:items-center gap-6">
-        <div class="flex flex-col items-center justify-center rounded-lg bg-editor-bg border border-editor-border w-24 h-24 shrink-0">
-          <span class="text-3xl font-bold text-warn">72</span>
-          <span class="text-[10px] text-gray-500">/ 100</span>
+      <!-- Header: score + summary + actions -->
+      <div class="rounded-xl border border-editor-border bg-editor-card/90 p-6">
+        <div class="flex flex-col lg:flex-row lg:items-center gap-5">
+          <div class="flex items-start sm:items-center gap-5 flex-1 min-w-0">
+            <div class="flex flex-col items-center justify-center rounded-lg bg-editor-bg border border-editor-border w-20 h-20 shrink-0">
+              <span class="text-2xl font-bold text-warn">72</span>
+              <span class="text-[10px] text-gray-500">/100</span>
+            </div>
+            <div class="min-w-0 flex-1">
+              <div class="flex items-center gap-2">
+                <span class="text-sm font-medium text-gray-300 truncate">github.com/acme/my-saas-app</span>
+                <span class="shrink-0 rounded-full border border-editor-border px-2 py-0.5 text-[10px] uppercase tracking-wide text-gray-500">github</span>
+              </div>
+              <h1 class="mt-1 text-lg font-semibold text-white">
+                Go <span class="text-gray-400 font-normal">1.22</span>
+                <span class="text-gray-400 font-normal">· Chi</span>
+                <span class="text-gray-400 font-normal">· PostgreSQL</span>
+                <span class="text-gray-400 font-normal">· Redis</span>
+              </h1>
+              <p class="mt-1 text-xs text-gray-500">Analyzed 4 minutes ago</p>
+            </div>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-2 lg:shrink-0">
+            <span class="inline-flex items-center gap-1.5 rounded-md border border-editor-border bg-editor-bg px-3 py-1.5 text-xs font-medium text-gray-300">
+              {{template "icon-link" .}} Copy link
+            </span>
+            <span class="inline-flex items-center gap-1.5 rounded-md border border-editor-border bg-editor-bg px-3 py-1.5 text-xs font-medium text-gray-300">
+              {{template "icon-download" .}} Download files
+            </span>
+            <span class="inline-flex items-center gap-1.5 rounded-md border border-editor-border bg-editor-bg px-3 py-1.5 text-xs font-medium text-gray-300">
+              {{template "icon-refresh" .}} Rescan
+            </span>
+          </div>
         </div>
-        <div>
-          <p class="font-medium text-white">my-saas-app · Go 1.22 · PostgreSQL + Redis</p>
-          <p class="mt-1 text-sm text-gray-400">Mostly ready. Fix 2 critical issues before deploying.</p>
+
+        <div class="mt-5 pt-5 border-t border-editor-border">
+          <p class="text-sm text-gray-300 leading-relaxed">
+            Mostly ready for production. Fix the hardcoded database credential and confirm admin routes require
+            auth before deploying — everything else is a should-fix, not a blocker.
+          </p>
         </div>
       </div>
 
-      <div class="mt-6 grid gap-3 sm:grid-cols-2">
-        <div class="rounded-lg border border-danger/30 bg-danger/5 px-4 py-3">
-          <p class="text-xs font-semibold text-danger">CRITICAL</p>
-          <p class="mt-1 text-sm text-gray-300">Hardcoded Postgres password in db/db.go</p>
+      <!-- Tabs + content, unified into one card — same vertical-nav layout as the real report page -->
+      <div data-tabs class="mt-6 rounded-xl border border-editor-border bg-editor-card/90 overflow-hidden flex flex-col sm:flex-row">
+        <div class="flex flex-row sm:flex-col gap-1 overflow-x-auto border-b border-editor-border p-2 sm:w-48 sm:shrink-0 sm:overflow-visible sm:border-b-0 sm:border-r">
+          <button type="button" data-tab-trigger="overview" aria-selected="true"
+                  class="shrink-0 rounded-md bg-brand px-3.5 py-2 text-left text-sm font-medium text-white shadow-sm transition-colors sm:shrink sm:w-full">Overview</button>
+          <button type="button" data-tab-trigger="security" aria-selected="false"
+                  class="shrink-0 rounded-md px-3.5 py-2 text-left text-sm font-medium text-gray-400 transition-colors hover:text-gray-200 sm:shrink sm:w-full">Security</button>
+          <button type="button" data-tab-trigger="infra" aria-selected="false"
+                  class="shrink-0 rounded-md px-3.5 py-2 text-left text-sm font-medium text-gray-400 transition-colors hover:text-gray-200 sm:shrink sm:w-full">Infrastructure</button>
+          <button type="button" data-tab-trigger="resources" aria-selected="false"
+                  class="shrink-0 rounded-md px-3.5 py-2 text-left text-sm font-medium text-gray-400 transition-colors hover:text-gray-200 sm:shrink sm:w-full">Resources</button>
+          <button type="button" data-tab-trigger="deploy" aria-selected="false"
+                  class="shrink-0 rounded-md px-3.5 py-2 text-left text-sm font-medium text-gray-400 transition-colors hover:text-gray-200 sm:shrink sm:w-full">Deploy</button>
+          <button type="button" data-tab-trigger="files" aria-selected="false"
+                  class="shrink-0 rounded-md px-3.5 py-2 text-left text-sm font-medium text-gray-400 transition-colors hover:text-gray-200 sm:shrink sm:w-full">Generated Files (6)</button>
         </div>
-        <div class="rounded-lg border border-warn/30 bg-warn/5 px-4 py-3">
-          <p class="text-xs font-semibold text-warn">WARNING</p>
-          <p class="mt-1 text-sm text-gray-300">No health check endpoint found</p>
-        </div>
-        <div class="rounded-lg border border-editor-border bg-editor-bg px-4 py-3">
-          <p class="text-xs font-semibold text-gray-500">RESOURCES</p>
-          <p class="mt-1 text-sm text-gray-300">1GB RAM · 1 vCPU · 20GB storage</p>
-        </div>
-        <div class="rounded-lg border border-editor-border bg-editor-bg px-4 py-3">
-          <p class="text-xs font-semibold text-gray-500">BEST FIT</p>
-          <p class="mt-1 text-sm text-gray-300">Fly.io — ~$5/month</p>
+
+        <div class="min-w-0 flex-1 p-6">
+
+          <!-- Overview -->
+          <div data-tab-panel="overview">
+            <section>
+              <h2 class="text-sm font-semibold uppercase tracking-wide text-danger">🔴 Critical Issues (2)</h2>
+              <ul class="mt-3 space-y-2">
+                <li class="rounded-md border-l-[3px] border-danger bg-danger/5 pl-3.5 pr-3 py-2.5 text-sm text-gray-200">Hardcoded Postgres password in db/db.go</li>
+                <li class="rounded-md border-l-[3px] border-danger bg-danger/5 pl-3.5 pr-3 py-2.5 text-sm text-gray-200">No authentication on /api/admin routes</li>
+              </ul>
+            </section>
+            <section class="mt-8">
+              <h2 class="text-sm font-semibold uppercase tracking-wide text-warn">⚠️ Warnings (3)</h2>
+              <ul class="mt-3 space-y-2">
+                <li class="rounded-md border-l-[3px] border-warn bg-warn/5 pl-3.5 pr-3 py-2.5 text-sm text-gray-200">No Dockerfile found</li>
+                <li class="rounded-md border-l-[3px] border-warn bg-warn/5 pl-3.5 pr-3 py-2.5 text-sm text-gray-200">DATABASE_URL missing from .env.example</li>
+                <li class="rounded-md border-l-[3px] border-warn bg-warn/5 pl-3.5 pr-3 py-2.5 text-sm text-gray-200">No health check endpoint</li>
+              </ul>
+            </section>
+            <section class="mt-8">
+              <h2 class="text-sm font-semibold uppercase tracking-wide text-gray-400">💡 Suggestions (2)</h2>
+              <ul class="mt-3 space-y-2">
+                <li class="rounded-md border-l-[3px] border-editor-border bg-editor-bg pl-3.5 pr-3 py-2.5 text-sm text-gray-300">Add rate limiting to auth endpoints</li>
+                <li class="rounded-md border-l-[3px] border-editor-border bg-editor-bg pl-3.5 pr-3 py-2.5 text-sm text-gray-300">Use a multi-stage Dockerfile to reduce image size</li>
+              </ul>
+            </section>
+          </div>
+
+          <!-- Security -->
+          <div data-tab-panel="security" class="hidden">
+            <div class="flex items-center gap-2 text-sm">
+              <span class="text-gray-400">Security score:</span>
+              <span class="font-semibold text-warn">61/100</span>
+            </div>
+            <p class="mt-3 text-sm text-gray-300 leading-relaxed">
+              Session auth is handled via middleware on most routes, but /api/admin isn't wrapped in it — those
+              handlers are reachable without a valid session.
+            </p>
+            <div class="mt-5 space-y-2">
+              <p class="text-xs uppercase tracking-wide text-gray-500">Hardcoded secret scan</p>
+              <div class="flex items-start gap-2 rounded-md border-l-[3px] border-red-500 bg-red-500/10 px-3.5 py-2.5 text-xs text-red-200">
+                <span class="font-semibold uppercase">critical</span>
+                <span>Postgres URL with credentials — db/db.go:14</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Infrastructure -->
+          <div data-tab-panel="infra" class="hidden">
+            <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
+              <div class="flex items-center justify-between gap-2 rounded-md border border-editor-border bg-editor-bg px-3.5 py-2.5">
+                <span class="text-gray-300">Dockerfile</span><span class="text-danger">✗</span>
+              </div>
+              <div class="flex items-center justify-between gap-2 rounded-md border border-editor-border bg-editor-bg px-3.5 py-2.5">
+                <span class="text-gray-300">docker-compose</span><span class="text-gray-500">—</span>
+              </div>
+              <div class="flex items-center justify-between gap-2 rounded-md border border-editor-border bg-editor-bg px-3.5 py-2.5">
+                <span class="text-gray-300">.env.example</span><span class="text-success">✓</span>
+              </div>
+              <div class="flex items-center justify-between gap-2 rounded-md border border-editor-border bg-editor-bg px-3.5 py-2.5">
+                <span class="text-gray-300">.gitignore covers .env</span><span class="text-success">✓</span>
+              </div>
+              <div class="flex items-center justify-between gap-2 rounded-md border border-editor-border bg-editor-bg px-3.5 py-2.5">
+                <span class="text-gray-300">CI config</span><span class="text-gray-500">—</span>
+              </div>
+              <div class="flex items-center justify-between gap-2 rounded-md border border-editor-border bg-editor-bg px-3.5 py-2.5">
+                <span class="text-gray-300">Health check</span><span class="text-danger">✗</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Resources -->
+          <div data-tab-panel="resources" class="hidden">
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div class="rounded-lg border border-editor-border bg-editor-bg p-4">
+                <p class="text-xs text-gray-500">Min RAM</p>
+                <p class="mt-1 text-xl font-bold text-white">512<span class="text-sm font-normal text-gray-400">MB</span></p>
+              </div>
+              <div class="rounded-lg border border-editor-border bg-editor-bg p-4">
+                <p class="text-xs text-gray-500">Min vCPU</p>
+                <p class="mt-1 text-xl font-bold text-white">0.5</p>
+              </div>
+              <div class="rounded-lg border border-editor-border bg-editor-bg p-4">
+                <p class="text-xs text-gray-500">Recommended RAM</p>
+                <p class="mt-1 text-xl font-bold text-white">1024<span class="text-sm font-normal text-gray-400">MB</span></p>
+              </div>
+              <div class="rounded-lg border border-editor-border bg-editor-bg p-4">
+                <p class="text-xs text-gray-500">Storage</p>
+                <p class="mt-1 text-xl font-bold text-white">20<span class="text-sm font-normal text-gray-400">GB</span></p>
+              </div>
+            </div>
+            <p class="mt-4 text-sm text-gray-400 leading-relaxed">
+              A Go API with Postgres and Redis runs comfortably in 1GB RAM under light-to-moderate load — a
+              half vCPU handles low traffic; scale horizontally for more.
+            </p>
+          </div>
+
+          <!-- Deploy -->
+          <div data-tab-panel="deploy" class="hidden">
+            <div class="space-y-3">
+              <div class="rounded-lg border border-editor-border bg-editor-bg p-4">
+                <div class="flex items-center justify-between">
+                  <span class="font-medium text-white">1. Fly.io</span>
+                  <span class="text-sm text-gray-400">$5-15/mo</span>
+                </div>
+                <p class="mt-1 text-xs text-gray-500">shared-cpu-1x, 256-512MB</p>
+                <p class="mt-2 text-sm text-gray-300 leading-relaxed">Cheap, globally distributed VMs — a good fit once a Dockerfile exists.</p>
+              </div>
+              <div class="rounded-lg border border-editor-border bg-editor-bg p-4">
+                <div class="flex items-center justify-between">
+                  <span class="font-medium text-white">2. Render</span>
+                  <span class="text-sm text-gray-400">$7-25/mo</span>
+                </div>
+                <p class="mt-1 text-xs text-gray-500">Starter (512MB-1GB)</p>
+                <p class="mt-2 text-sm text-gray-300 leading-relaxed">Managed health checks and zero-config builds for a Go API plus Postgres.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Generated Files -->
+          <div data-tab-panel="files" class="hidden">
+            <p class="mb-4 text-sm text-gray-400 leading-relaxed">
+              Ready-to-use deployment files for this stack, generated fresh — regardless of what the repo already has.
+            </p>
+            <div class="rounded-lg border border-editor-border bg-[#0a0d12] overflow-hidden">
+              <div class="flex items-center justify-between border-b border-editor-border bg-editor-surface px-3 py-2">
+                <span class="font-mono text-xs text-gray-300">Dockerfile</span>
+              </div>
+              <pre class="p-4 text-xs text-gray-300 overflow-x-auto"><code>FROM golang:1.22-alpine AS builder
+WORKDIR /app
+COPY go.mod go.sum ./
+RUN go mod download
+COPY . .
+RUN CGO_ENABLED=0 go build -o server .
+
+FROM alpine:3.19
+COPY --from=builder /app/server .
+EXPOSE 8080
+CMD ["./server"]</code></pre>
+            </div>
+          </div>
+
         </div>
       </div>
     </div>
