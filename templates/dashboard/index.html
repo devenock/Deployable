@@ -22,10 +22,11 @@
 
       <!-- Stats -->
       <div class="mt-6 grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div class="rounded-lg border border-editor-border bg-editor-card/60 p-4">
+        <a href="/dashboard?tab=reports" data-dash-nav-trigger="reports"
+           class="rounded-lg border border-editor-border bg-editor-card/60 p-4 transition-colors hover:border-brand/40 hover:bg-editor-card">
           <p class="text-xs text-gray-500">Total reports</p>
           <p class="mt-1 text-2xl font-bold text-white">{{.Stats.TotalReports}}</p>
-        </div>
+        </a>
         <div class="rounded-lg border border-editor-border bg-editor-card/60 p-4">
           <p class="text-xs text-gray-500">Connected repos</p>
           <p class="mt-1 text-2xl font-bold text-white">{{len .ConnectedRepos}}</p>
