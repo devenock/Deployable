@@ -186,7 +186,7 @@ func schemaDescription() string {
   "estimated_rps": int,
   "reasoning": string — plain English explanation of the resource estimates,
   "platforms": [{"name": string, "rank": int, "monthly_usd": string, "instance_type": string, "reasoning": string, "deploy_steps": [string], "config_file": string}],
-  "readiness_summary": string — 2-3 sentence human summary,
+  "readiness_summary": string — ONE tight sentence (25 words max), the single most important takeaway, not a recap of every finding,
   "readiness_score": int (0-100)
 }`
 }
