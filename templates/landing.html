@@ -431,7 +431,8 @@ CMD ["./server"]</code></pre>
     </div>
 
     <div class="mt-14 grid gap-6 sm:grid-cols-3">
-      <div class="rounded-lg border border-editor-border bg-editor-card p-6 hover:border-brand/40 transition-colors" data-reveal>
+      <div class="group relative rounded-lg border border-editor-border bg-editor-card p-6 hover:border-brand/40 transition-colors" data-reveal>
+        <span class="absolute top-5 right-6 font-mono text-xs text-gray-600">01</span>
         <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-brand/10 text-brand">
           <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 4v11m0 0-4-4m4 4 4-4M5 17v2a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </div>
@@ -439,10 +440,14 @@ CMD ["./server"]</code></pre>
         <p class="mt-2 text-sm text-gray-400">
           Drop your project as a zip file — nothing to install, just sign in first.
         </p>
-        <a href="/analyze" class="mt-4 inline-block text-sm text-brand hover:underline">Try it →</a>
+        <div class="mt-4 rounded-md border border-dashed border-editor-border bg-editor-bg px-3 py-3 text-center transition-colors group-hover:border-brand/40">
+          <p class="text-[11px] text-gray-500">Drag &amp; drop or click to browse</p>
+        </div>
+        <a href="/analyze" class="mt-4 inline-flex items-center gap-1 text-sm font-medium text-brand hover:underline">Try it <span aria-hidden="true">→</span></a>
       </div>
-      <div class="rounded-lg border border-editor-border bg-editor-card p-6 hover:border-brand/40 transition-colors" data-reveal data-reveal-delay="100">
-        <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-brand/10 text-brand">
+      <div class="group relative rounded-lg border border-editor-border bg-editor-card p-6 hover:border-success/40 transition-colors" data-reveal data-reveal-delay="100">
+        <span class="absolute top-5 right-6 font-mono text-xs text-gray-600">02</span>
+        <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-success/10 text-success">
           <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 2C6.48 2 2 6.58 2 12.25c0 4.53 2.87 8.37 6.84 9.73.5.1.68-.22.68-.5v-1.94c-2.78.62-3.37-1.37-3.37-1.37-.46-1.2-1.11-1.52-1.11-1.52-.9-.63.07-.62.07-.62 1 .07 1.53 1.05 1.53 1.05.9 1.57 2.34 1.12 2.91.85.09-.67.35-1.12.63-1.38-2.22-.26-4.56-1.14-4.56-5.05 0-1.12.39-2.03 1.03-2.75-.1-.26-.45-1.3.1-2.7 0 0 .84-.28 2.75 1.05a9.3 9.3 0 0 1 5 0c1.91-1.33 2.75-1.05 2.75-1.05.55 1.4.2 2.44.1 2.7.64.72 1.03 1.63 1.03 2.75 0 3.92-2.34 4.79-4.57 5.04.36.32.68.94.68 1.9v2.82c0 .28.18.61.69.5C19.14 20.6 22 16.77 22 12.25 22 6.58 17.52 2 12 2Z" fill="currentColor"/></svg>
         </div>
         <h3 class="mt-4 font-semibold text-white">Connect GitHub</h3>
@@ -450,17 +455,25 @@ CMD ["./server"]</code></pre>
           Connect your account, import the repos you care about, and rescan with one
           click whenever you push.
         </p>
-        <a href="/analyze" class="mt-4 inline-block text-sm text-brand hover:underline">Try it →</a>
+        <div class="mt-4 flex items-center justify-between gap-2 rounded-md border border-editor-border bg-editor-bg px-3 py-2.5">
+          <span class="truncate font-mono text-[11px] text-gray-400">acme/my-saas-app</span>
+          <span class="shrink-0 rounded border border-success/30 bg-success/10 px-1.5 py-0.5 text-[10px] text-success">Imported</span>
+        </div>
+        <a href="/analyze" class="mt-4 inline-flex items-center gap-1 text-sm font-medium text-success hover:underline">Try it <span aria-hidden="true">→</span></a>
       </div>
-      <div class="rounded-lg border border-editor-border bg-editor-card p-6 hover:border-brand/40 transition-colors" data-reveal data-reveal-delay="200">
-        <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-brand/10 text-brand">
+      <div class="group relative rounded-lg border border-editor-border bg-editor-card p-6 hover:border-warn/40 transition-colors" data-reveal data-reveal-delay="200">
+        <span class="absolute top-5 right-6 font-mono text-xs text-gray-600">03</span>
+        <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-warn/10 text-warn">
           <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="m6 8 4 4-4 4M13 16h5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </div>
         <h3 class="mt-4 font-semibold text-white">Use the CLI</h3>
         <p class="mt-2 text-sm text-gray-400">
-          Run <code class="text-brand">deployable .</code> in any project directory — colored terminal output, CI-friendly.
+          Run <code class="text-warn">deployable .</code> in any project directory — colored terminal output, CI-friendly.
         </p>
-        <a href="#cli" class="mt-4 inline-block text-sm text-brand hover:underline">See it in action →</a>
+        <div class="mt-4 rounded-md bg-black/40 px-3 py-2.5 font-mono text-[11px]">
+          <span class="text-gray-500">$</span> <span class="text-gray-300">deployable .</span>
+        </div>
+        <a href="#cli" class="mt-4 inline-flex items-center gap-1 text-sm font-medium text-warn hover:underline">See it in action <span aria-hidden="true">→</span></a>
       </div>
     </div>
   </div>
