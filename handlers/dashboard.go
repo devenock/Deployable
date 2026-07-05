@@ -18,6 +18,9 @@ const dashboardPageSize = 20
 // @Tags         web
 // @Produce      html
 // @Param        search  query  string  false  "Filter by source, language, or framework (Reports section)"
+// @Param        type    query  string  false  "'zip', 'github', or 'cli' — filter by source type (Reports section)"
+// @Param        status  query  string  false  "'attention' (score < 60) or 'ready' (score >= 60) (Reports section)"
+// @Param        sort    query  string  false  "'newest' (default), 'oldest', 'score_desc', or 'score_asc' (Reports section)"
 // @Param        page    query  int     false  "Page number, 1-indexed (Reports section)"
 // @Param        tab     query  string  false  "'analyze' or 'reports' shows that section; anything else (default) shows the overview"
 // @Success      200  {string}  string  "HTML page or partial"
@@ -27,14 +30,19 @@ func Dashboard(deps Deps) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		user, _ := middleware.UserFromContext(r.Context())
 
-		search := strings.TrimSpace(r.URL.Query().Get("search"))
+		filter := models.ReportListFilter{
+			Search: strings.TrimSpace(r.URL.Query().Get("search")),
+			Type:   r.URL.Query().Get("type"),
+			Status: r.URL.Query().Get("status"),
+			Sort:   r.URL.Query().Get("sort"),
+		}
 		page, _ := strconv.Atoi(r.URL.Query().Get("page"))
 		if page < 1 {
 			page = 1
 		}
 		offset := (page - 1) * dashboardPageSize
 
-		reports, total, err := models.ListReportsByUser(r.Context(), deps.Pool, user.ID, search, dashboardPageSize, offset)
+		reports, total, err := models.ListReportsByUser(r.Context(), deps.Pool, user.ID, filter, dashboardPageSize, offset)
 		if err != nil {
 			log.Printf("list reports for dashboard: %v", err)
 			http.Error(w, "could not load dashboard", http.StatusInternalServerError)
@@ -46,11 +54,19 @@ func Dashboard(deps Deps) http.HandlerFunc {
 			totalPages = 1
 		}
 
+		sortValue := filter.Sort
+		if sortValue == "" {
+			sortValue = "newest"
+		}
+
 		data := map[string]any{
 			"Title":      "Dashboard",
 			"User":       user,
 			"Reports":    reports,
-			"Search":     search,
+			"Search":     filter.Search,
+			"Type":       filter.Type,
+			"Status":     filter.Status,
+			"Sort":       sortValue,
 			"Page":       page,
 			"TotalPages": totalPages,
 			"Total":      total,
@@ -81,7 +97,7 @@ func Dashboard(deps Deps) http.HandlerFunc {
 		switch {
 		case r.URL.Query().Get("tab") == "analyze":
 			activeNav = "analyze"
-		case r.URL.Query().Get("tab") == "reports" || search != "":
+		case r.URL.Query().Get("tab") == "reports" || filter.Search != "" || filter.Type != "" || filter.Status != "":
 			activeNav = "reports"
 		}
 
