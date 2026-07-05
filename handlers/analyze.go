@@ -52,7 +52,7 @@ const (
 
 // AnalyzePage godoc
 // @Summary      Analyze page
-// @Description  Public, rate-limited input page for starting an analysis (zip upload; GitHub/CLI tabs land in Phase 3/4). Works for anonymous visitors — if a session cookie is present the resulting job/report is attributed to that user. Logged-in visitors get the dashboard's sidebar shell instead of the marketing nav.
+// @Description  Input page for starting an analysis. Viewable by anyone, but actually submitting one (zip, GitHub URL, or CLI with an API key) requires a signed-in session — a scan started anonymously can't be linked to an account after the fact, so anonymous visitors get a sign-in prompt in place of the form. Logged-in visitors get the dashboard's sidebar shell instead of the marketing nav.
 // @Tags         web
 // @Produce      html
 // @Success      200  {string}  string  "HTML page"
@@ -95,7 +95,7 @@ func analyzeFormData(deps Deps, r *http.Request, user *models.User) map[string]a
 
 // AnalyzeZip godoc
 // @Summary      Submit a project as a ZIP upload
-// @Description  Validates and extracts the uploaded zip (max 100MB by default, configurable via MAX_UPLOAD_BYTES; zip-slip protected), creates an analysis job, and kicks off the analysis pipeline in the background. Responds with an HX-Redirect header to the processing page rather than a body — the client (HTMX) follows it as a full navigation.
+// @Description  Requires a signed-in session (see RequireAuth). Validates and extracts the uploaded zip (max 100MB by default, configurable via MAX_UPLOAD_BYTES; zip-slip protected), creates an analysis job, and kicks off the analysis pipeline in the background. Responds with an HX-Redirect header to the processing page rather than a body — the client (HTMX) follows it as a full navigation.
 // @Tags         web
 // @Accept       mpfd
 // @Param        file  formData  file  true  "Project source as a .zip archive"
@@ -105,10 +105,8 @@ func analyzeFormData(deps Deps, r *http.Request, user *models.User) map[string]a
 // @Router       /analyze/zip [post]
 func AnalyzeZip(deps Deps) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		var userID *uuid.UUID
-		if user, ok := middleware.UserFromContext(r.Context()); ok {
-			userID = &user.ID
-		}
+		user, _ := middleware.UserFromContext(r.Context()) // guaranteed by RequireAuth
+		userID := &user.ID
 
 		job, status, msg := acceptZipUpload(w, r, deps, userID)
 		if status != 0 {
@@ -178,7 +176,7 @@ func acceptZipUpload(w http.ResponseWriter, r *http.Request, deps Deps, userID *
 
 // AnalyzeGitHub godoc
 // @Summary      Submit a project via a GitHub repository URL
-// @Description  Parses a github.com/owner/repo URL, fetches repo metadata, and downloads its default-branch zipball (max 100MB by default, same limit and cap as direct ZIP upload). Public repos work with no account; private repos require the requester to have connected GitHub via GET /auth/github/connect. Kicks off the same analysis pipeline as the ZIP upload path.
+// @Description  Requires a signed-in session (see RequireAuth). Parses a github.com/owner/repo URL, fetches repo metadata, and downloads its default-branch zipball (max 100MB by default, same limit and cap as direct ZIP upload). Public repos work as soon as you're signed in; private repos additionally require the requester to have connected GitHub via GET /auth/github/connect. Kicks off the same analysis pipeline as the ZIP upload path.
 // @Tags         web
 // @Accept       x-www-form-urlencoded
 // @Param        url  formData  string  true  "GitHub repository URL, e.g. github.com/owner/repo"
@@ -201,10 +199,8 @@ func AnalyzeGitHub(deps Deps) http.HandlerFunc {
 			return
 		}
 
-		var userID *uuid.UUID
-		if user, ok := middleware.UserFromContext(r.Context()); ok {
-			userID = &user.ID
-		}
+		user, _ := middleware.UserFromContext(r.Context()) // guaranteed by RequireAuth
+		userID := &user.ID
 
 		job, status, msg := startGitHubAnalysis(r.Context(), deps, userID, owner, repo, clientIP(r))
 		if status != 0 {
@@ -345,7 +341,7 @@ func githubTokenCandidates(ctx context.Context, deps Deps, userID uuid.UUID, ful
 
 // ProcessingPage godoc
 // @Summary      Analysis processing page
-// @Description  Renders the live-progress page for a running job; the page itself polls GET /analyze/{jobID}/status every 2 seconds via HTMX.
+// @Description  Requires a signed-in session (see RequireAuth). Renders the live-progress page for a running job; the page itself polls GET /analyze/{jobID}/status every 2 seconds via HTMX.
 // @Tags         web
 // @Produce      html
 // @Param        jobID  path  string  true  "Analysis job ID"
@@ -379,11 +375,11 @@ func ProcessingPage(deps Deps) http.HandlerFunc {
 
 // AnalyzeStatus godoc
 // @Summary      Poll analysis job status
-// @Description  HTMX polling target — returns an HTML partial reflecting current progress. Once the job completes, responds with an HX-Redirect header pointing at the report page instead of a body.
+// @Description  Requires a signed-in session (see RequireAuth). HTMX polling target — returns an HTML partial reflecting current progress. Once the job completes, responds with an HX-Redirect header pointing at the report page instead of a body.
 // @Tags         web
 // @Produce      html
 // @Param        jobID  path  string  true  "Analysis job ID"
-// @Success      200  {string}  string  "Progress partial, or HX-Redirect to /report/{slug}?new=1 once complete"
+// @Success      200  {string}  string  "Progress partial, or HX-Redirect to /report/{slug} once complete"
 // @Failure      404  {string}  string  "Unknown job"
 // @Router       /analyze/{jobID}/status [get]
 func AnalyzeStatus(deps Deps) http.HandlerFunc {
@@ -410,12 +406,7 @@ func AnalyzeStatus(deps Deps) http.HandlerFunc {
 
 		if status == "complete" {
 			if slug, ok := reportSlugForJob(r.Context(), deps, jobID); ok {
-				// ?new=1 is the signal the report page's JS uses to record this
-				// report into the anonymous "recent on this device" localStorage
-				// list — it distinguishes "I just created this" from "I'm
-				// viewing a link someone shared," then strips itself from the
-				// URL bar.
-				w.Header().Set("HX-Redirect", "/report/"+slug+"?new=1")
+				w.Header().Set("HX-Redirect", "/report/"+slug)
 				w.WriteHeader(http.StatusOK)
 				return
 			}

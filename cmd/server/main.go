@@ -173,16 +173,17 @@ func main() {
 		r.With(middleware.RequireAuth(pool, rdb)).Delete("/report/{slug}", handlers.ReportDelete(deps))
 	})
 
-	// Analyze — public (anonymous analysis is allowed per ARCHITECTURE.md).
-	// OptionalAuth attaches a user to the job/report when a session cookie
-	// happens to be present, without requiring one. RateLimit is applied
-	// only to the action that starts a new analysis (POST /analyze/zip) —
-	// not to viewing the page or polling an already-started job's status,
-	// which HTMX does every 2s and would otherwise exhaust the hourly quota
-	// within seconds of a single analysis starting.
+	// Analyze — requires a signed-in account. An anonymous scan can't be
+	// linked to a user after the fact (no way to claim it on signup), so
+	// every analyze action needs a session. GET /analyze itself stays
+	// reachable anonymously so it can render a sign-in prompt instead of
+	// 404ing. RateLimit is applied only to the action that starts a new
+	// analysis (POST /analyze/zip) — not to polling an already-started
+	// job's status, which HTMX does every 2s and would otherwise exhaust
+	// the hourly quota within seconds of a single analysis starting.
+	r.With(middleware.OptionalAuth(pool, rdb)).Get("/analyze", handlers.AnalyzePage(deps))
 	r.Group(func(r chi.Router) {
-		r.Use(middleware.OptionalAuth(pool, rdb))
-		r.Get("/analyze", handlers.AnalyzePage(deps))
+		r.Use(middleware.RequireAuth(pool, rdb))
 		r.With(middleware.RateLimit(rdb)).Post("/analyze/zip", handlers.AnalyzeZip(deps))
 		r.With(middleware.RateLimit(rdb)).Post("/analyze/github", handlers.AnalyzeGitHub(deps))
 		r.Get("/analyze/{jobID}/status", handlers.AnalyzeStatus(deps))
