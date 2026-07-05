@@ -41,12 +41,20 @@ function initDashboardSections() {
   var panels = document.querySelectorAll('[data-dash-panel]');
   if (!triggers.length || !panels.length) return;
 
+  // Only the sidebar's own links get their active/inactive appearance
+  // toggled. Other [data-dash-nav-trigger] elements (a stat tile, the "+
+  // Analyze a project" button, empty-state links, ...) share the same
+  // switch-panels-and-update-the-URL behavior but are styled on their own
+  // terms — restyling them here as a side effect of clicking an unrelated
+  // trigger elsewhere on the page was corrupting their appearance.
+  var navLinks = document.querySelectorAll('#app-sidebar [data-dash-nav-trigger]');
+
   triggers.forEach(function (trigger) {
     trigger.addEventListener('click', function (e) {
       e.preventDefault();
       var section = trigger.getAttribute('data-dash-nav-trigger');
 
-      triggers.forEach(function (t) {
+      navLinks.forEach(function (t) {
         var active = t.getAttribute('data-dash-nav-trigger') === section;
         t.classList.toggle('bg-brand/10', active);
         t.classList.toggle('text-brand', active);
@@ -58,7 +66,7 @@ function initDashboardSections() {
         p.classList.toggle('hidden', p.getAttribute('data-dash-panel') !== section);
       });
 
-      var url = section === 'analyze' ? '/dashboard?tab=analyze' : '/dashboard';
+      var url = section === 'analyze' ? '/dashboard?tab=analyze' : section === 'reports' ? '/dashboard?tab=reports' : '/dashboard';
       window.history.replaceState({}, '', url);
 
       // Close the mobile drawer after picking a section — staying open
