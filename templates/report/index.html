@@ -128,24 +128,27 @@
       </div>
     </div>
     {{else}}
-    <!-- Tabs + content, unified into one card -->
-    <div data-tabs class="fade-up mt-6 rounded-xl border border-editor-border bg-editor-card/90 backdrop-blur-sm shadow-2xl shadow-black/40 overflow-hidden [animation-delay:60ms]">
-      <div class="flex flex-wrap gap-1 border-b border-editor-border p-2">
+    <!-- Tabs + content, unified into one card. Tabs run down the left as a
+         vertical nav on sm+ screens; below that they scroll horizontally
+         along the top instead, since a narrow vertical rail would eat too
+         much width on a phone. -->
+    <div data-tabs class="fade-up mt-6 rounded-xl border border-editor-border bg-editor-card/90 backdrop-blur-sm shadow-2xl shadow-black/40 overflow-hidden [animation-delay:60ms] flex flex-col sm:flex-row">
+      <div class="flex flex-row sm:flex-col gap-1 overflow-x-auto border-b border-editor-border p-2 sm:w-48 sm:shrink-0 sm:overflow-visible sm:border-b-0 sm:border-r">
         <button type="button" data-tab-trigger="overview" aria-selected="true"
-                class="rounded-md bg-brand px-3.5 py-1.5 text-sm font-medium text-white shadow-sm transition-colors">Overview</button>
+                class="shrink-0 rounded-md bg-brand px-3.5 py-2 text-left text-sm font-medium text-white shadow-sm transition-colors sm:shrink sm:w-full">Overview</button>
         <button type="button" data-tab-trigger="security" aria-selected="false"
-                class="rounded-md px-3.5 py-1.5 text-sm font-medium text-gray-400 hover:text-gray-200 transition-colors">Security</button>
+                class="shrink-0 rounded-md px-3.5 py-2 text-left text-sm font-medium text-gray-400 transition-colors hover:text-gray-200 sm:shrink sm:w-full">Security</button>
         <button type="button" data-tab-trigger="infra" aria-selected="false"
-                class="rounded-md px-3.5 py-1.5 text-sm font-medium text-gray-400 hover:text-gray-200 transition-colors">Infrastructure</button>
+                class="shrink-0 rounded-md px-3.5 py-2 text-left text-sm font-medium text-gray-400 transition-colors hover:text-gray-200 sm:shrink sm:w-full">Infrastructure</button>
         <button type="button" data-tab-trigger="resources" aria-selected="false"
-                class="rounded-md px-3.5 py-1.5 text-sm font-medium text-gray-400 hover:text-gray-200 transition-colors">Resources</button>
+                class="shrink-0 rounded-md px-3.5 py-2 text-left text-sm font-medium text-gray-400 transition-colors hover:text-gray-200 sm:shrink sm:w-full">Resources</button>
         <button type="button" data-tab-trigger="deploy" aria-selected="false"
-                class="rounded-md px-3.5 py-1.5 text-sm font-medium text-gray-400 hover:text-gray-200 transition-colors">Deploy</button>
+                class="shrink-0 rounded-md px-3.5 py-2 text-left text-sm font-medium text-gray-400 transition-colors hover:text-gray-200 sm:shrink sm:w-full">Deploy</button>
         <button type="button" data-tab-trigger="files" aria-selected="false"
-                class="rounded-md px-3.5 py-1.5 text-sm font-medium text-gray-400 hover:text-gray-200 transition-colors">Generated Files{{if $hasFiles}} ({{len $r.GeneratedFiles}}){{end}}</button>
+                class="shrink-0 rounded-md px-3.5 py-2 text-left text-sm font-medium text-gray-400 transition-colors hover:text-gray-200 sm:shrink sm:w-full">Generated Files{{if $hasFiles}} ({{len $r.GeneratedFiles}}){{end}}</button>
       </div>
 
-      <div class="p-6">
+      <div class="min-w-0 flex-1 p-6">
 
         <!-- Overview -->
         <div data-tab-panel="overview">
