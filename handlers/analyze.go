@@ -38,6 +38,13 @@ var analysisSteps = []string{
 	"Generating deployment files",
 }
 
+// aiAnalysisStep is the 1-indexed step number of "Analyzing with AI" — the
+// one step that's a single blocking API call rather than a loop over files,
+// so it has no internal progress to report. The status endpoint shows
+// elapsed time there instead, as the only honest signal that it's still
+// working.
+const aiAnalysisStep = 4
+
 const (
 	// defaultMaxUploadBytes bounds the *source tree* extractZip keeps —
 	// node_modules/vendor/.git/dist/build entries are skipped while
@@ -369,6 +376,10 @@ func ProcessingPage(deps Deps) http.HandlerFunc {
 			http.NotFound(w, r)
 			return
 		}
+		stepMessage := job.StepMessage
+		if job.Status == "running" && job.CurrentStep == aiAnalysisStep && job.StartedAt != nil {
+			stepMessage = fmt.Sprintf("%s (%ds elapsed)", stepMessage, int(time.Since(*job.StartedAt).Seconds()))
+		}
 		user, _ := middleware.UserFromContext(r.Context())
 		deps.Render(w, "analyze-processing", map[string]any{
 			"Title":       "Analyzing",
@@ -377,7 +388,7 @@ func ProcessingPage(deps Deps) http.HandlerFunc {
 			"JobID":       job.ID.String(),
 			"Steps":       analysisSteps,
 			"CurrentStep": job.CurrentStep,
-			"StepMessage": job.StepMessage,
+			"StepMessage": stepMessage,
 		})
 	}
 }
@@ -418,6 +429,12 @@ func AnalyzeStatus(deps Deps) http.HandlerFunc {
 				w.Header().Set("HX-Redirect", "/report/"+slug)
 				w.WriteHeader(http.StatusOK)
 				return
+			}
+		}
+
+		if status == "running" && step == aiAnalysisStep {
+			if startedAt, ok := getJobStartedAt(r.Context(), deps, jobID); ok {
+				message = fmt.Sprintf("%s (%ds elapsed)", message, int(time.Since(startedAt).Seconds()))
 			}
 		}
 
@@ -544,6 +561,7 @@ func runAnalysisPipeline(deps Deps, jobID uuid.UUID, userID *uuid.UUID, extractD
 	defer cancel()
 
 	setJobStatus(ctx, deps, jobID, "running")
+	setJobStartedAt(ctx, deps, jobID, time.Now())
 
 	dir := analysisRoot
 	manifest, err := analyzer.WalkFiles(dir)
@@ -552,7 +570,7 @@ func runAnalysisPipeline(deps Deps, jobID uuid.UUID, userID *uuid.UUID, extractD
 		return
 	}
 
-	if cached, err := models.FindReportByContentHash(ctx, deps.Pool, manifest.ContentHash()); err == nil {
+	if cached, err := models.FindReportByContentHash(ctx, deps.Pool, manifest.ContentHash(nil)); err == nil {
 		setJobProgress(ctx, deps, jobID, len(analysisSteps), "Using cached analysis")
 		completeJobWithReport(ctx, deps, jobID, cached)
 		return
@@ -716,6 +734,26 @@ func setJobStatus(ctx context.Context, deps Deps, jobID uuid.UUID, status string
 func getJobStatus(ctx context.Context, deps Deps, jobID uuid.UUID) string {
 	s, _ := deps.Redis.Get(ctx, "job:"+jobID.String()+":status")
 	return s
+}
+
+// setJobStartedAt/getJobStartedAt cache a job's start time in Redis so the
+// polled status endpoint can show elapsed time for the "Analyzing with AI"
+// step (a single blocking API call with no internal progress to report)
+// without a Postgres round trip on every 2-second poll.
+func setJobStartedAt(ctx context.Context, deps Deps, jobID uuid.UUID, at time.Time) {
+	_ = deps.Redis.Set(ctx, "job:"+jobID.String()+":started_at", at.Unix(), jobStateTTL)
+}
+
+func getJobStartedAt(ctx context.Context, deps Deps, jobID uuid.UUID) (time.Time, bool) {
+	raw, err := deps.Redis.Get(ctx, "job:"+jobID.String()+":started_at")
+	if err != nil {
+		return time.Time{}, false
+	}
+	unix, err := strconv.ParseInt(raw, 10, 64)
+	if err != nil {
+		return time.Time{}, false
+	}
+	return time.Unix(unix, 0), true
 }
 
 func setJobProgress(ctx context.Context, deps Deps, jobID uuid.UUID, step int, message string) {
