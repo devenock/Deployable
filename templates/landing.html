@@ -40,10 +40,75 @@
     </div>
 
     <p class="fade-up mt-8 text-xs uppercase tracking-wider text-gray-600 [animation-delay:260ms]">Detects</p>
-    <div class="fade-up mt-3 flex flex-wrap items-center justify-center gap-2 [animation-delay:260ms]">
-      {{range list "Go" "Node.js" "Python" "Ruby" "Rust" "PHP" "PostgreSQL" "Redis" "MongoDB"}}
-      <span class="rounded-full border border-editor-border bg-editor-card px-3 py-1 text-xs text-gray-400">{{.}}</span>
-      {{end}}
+    <div class="fade-up mt-4 flex flex-wrap items-center justify-center gap-3 [animation-delay:260ms]">
+      <div class="flex h-11 w-11 items-center justify-center rounded-lg bg-[#00ADD8]/10" title="Go">
+        <svg class="h-6 w-6 text-[#00ADD8]" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <ellipse cx="12" cy="14" rx="7" ry="6" fill="currentColor"/>
+          <circle cx="6.5" cy="8" r="2.2" fill="currentColor"/>
+          <circle cx="17.5" cy="8" r="2.2" fill="currentColor"/>
+          <circle cx="9" cy="13" r="1.3" fill="#0b0f14"/>
+          <circle cx="15" cy="13" r="1.3" fill="#0b0f14"/>
+        </svg>
+        <span class="sr-only">Go</span>
+      </div>
+      <div class="flex h-11 w-11 items-center justify-center rounded-lg bg-[#3c873a]/10" title="Node.js">
+        <svg class="h-6 w-6 text-[#3c873a]" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M12 2.5 20.5 7v10L12 21.5 3.5 17V7L12 2.5Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+        </svg>
+        <span class="sr-only">Node.js</span>
+      </div>
+      <div class="flex h-11 w-11 items-center justify-center rounded-lg bg-editor-card border border-editor-border" title="Python">
+        <svg class="h-6 w-6" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <path d="M12 2.2c-1.8 0-3.3.3-3.3 2v2.1H12v.7H6.8c-1.8 0-3.3 1.2-3.3 3.6 0 2.4 1.5 3.6 3.3 3.6h1.4v-2c0-1.8 1.5-3.3 3.3-3.3h3.9c1.4 0 2.5-1.1 2.5-2.5V4.2c0-1.7-1.5-2-3.9-2Z" fill="#4B8BBE"/>
+          <path d="M12 21.8c1.8 0 3.3-.3 3.3-2v-2.1H12v-.7h5.2c1.8 0 3.3-1.2 3.3-3.6 0-2.4-1.5-3.6-3.3-3.6h-1.4v2c0 1.8-1.5 3.3-3.3 3.3H8.6c-1.4 0-2.5 1.1-2.5 2.5v3.5c0 1.7 1.5 2 3.9 2Z" fill="#FFD43B"/>
+          <circle cx="9.3" cy="4.6" r="0.8" fill="#0b0f14"/>
+          <circle cx="14.7" cy="19.4" r="0.8" fill="#0b0f14"/>
+        </svg>
+        <span class="sr-only">Python</span>
+      </div>
+      <div class="flex h-11 w-11 items-center justify-center rounded-lg bg-[#CC342D]/10" title="Ruby">
+        <svg class="h-6 w-6 text-[#CC342D]" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <path d="M6 4h12l4 5-10 11L2 9l4-5Z" fill="currentColor"/>
+          <path d="M6 4l2.5 5H2M18 4l-2.5 5H22M8.5 9 12 20l3.5-11M2 9l10 11M22 9 12 20" stroke="#0b0f14" stroke-width="0.5" stroke-linejoin="round"/>
+        </svg>
+        <span class="sr-only">Ruby</span>
+      </div>
+      <div class="flex h-11 w-11 items-center justify-center rounded-lg bg-[#CE422B]/10" title="Rust">
+        <svg class="h-6 w-6 text-[#CE422B]" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="12" cy="12" r="2.6" stroke="currentColor" stroke-width="1.8"/>
+          <path d="M12 3.5v2.3M12 18.2v2.3M20.5 12h-2.3M5.8 12H3.5M17.9 6.1l-1.6 1.6M7.7 16.3l-1.6 1.6M17.9 17.9l-1.6-1.6M7.7 7.7 6.1 6.1" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/>
+        </svg>
+        <span class="sr-only">Rust</span>
+      </div>
+      <div class="flex h-11 w-11 items-center justify-center rounded-lg bg-[#777BB4]/10" title="PHP">
+        <svg class="h-6 w-6 text-[#777BB4]" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <ellipse cx="12" cy="12" rx="9.5" ry="5.5" stroke="currentColor" stroke-width="1.8"/>
+          <path d="M8.5 10h1.8a1.7 1.7 0 0 1 0 3.4H9M8.5 10v4.2M14 10h2.3M14.6 10v4.2M14 12.1h1.7" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span class="sr-only">PHP</span>
+      </div>
+      <div class="flex h-11 w-11 items-center justify-center rounded-lg bg-[#336791]/10" title="PostgreSQL">
+        <svg class="h-6 w-6 text-[#336791]" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M9 20c-3-1-5-4-5-7.5C4 7.4 7.8 4 12 4s8 3.4 8 8.2c0 2-1 3.7-2.5 3.7-.6 0-1-.3-1.3-.8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M9 20v-3.4M12 20v-4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+          <circle cx="9.5" cy="9.5" r="0.9" fill="currentColor"/>
+        </svg>
+        <span class="sr-only">PostgreSQL</span>
+      </div>
+      <div class="flex h-11 w-11 items-center justify-center rounded-lg bg-[#DC382D]/10" title="Redis">
+        <svg class="h-6 w-6 text-[#DC382D]" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <ellipse cx="12" cy="5.5" rx="7" ry="2.5" stroke="currentColor" stroke-width="1.8"/>
+          <path d="M5 5.5v5c0 1.4 3.1 2.5 7 2.5s7-1.1 7-2.5v-5M5 10.5v5c0 1.4 3.1 2.5 7 2.5s7-1.1 7-2.5v-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+        </svg>
+        <span class="sr-only">Redis</span>
+      </div>
+      <div class="flex h-11 w-11 items-center justify-center rounded-lg bg-[#47A248]/10" title="MongoDB">
+        <svg class="h-6 w-6 text-[#47A248]" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M12 2c3 3 5 6.5 5 10a5 5 0 0 1-10 0c0-3.5 2-7 5-10Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+          <path d="M12 22v-7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+        </svg>
+        <span class="sr-only">MongoDB</span>
+      </div>
     </div>
   </div>
 </section>
@@ -53,7 +118,7 @@
      classes, populated with illustrative data. Tabs are genuinely clickable
      (initTabs() in app.js drives any [data-tabs] group generically), so
      this is an interactive demo, not just a screenshot. -->
-<section class="max-w-5xl mx-auto px-4 pb-24">
+<section class="max-w-6xl mx-auto px-4 pb-24">
   <div class="relative rounded-xl border border-editor-border bg-editor-card shadow-2xl shadow-black/40 overflow-hidden" data-reveal>
     <div class="flex items-center gap-2 border-b border-editor-border bg-editor-surface px-4 py-2.5">
       <span class="h-2.5 w-2.5 rounded-full bg-danger/70"></span>
@@ -63,7 +128,7 @@
       <span class="ml-auto rounded-full bg-editor-bg px-2.5 py-0.5 text-[10px] font-medium tracking-wide text-gray-500">EXAMPLE REPORT</span>
     </div>
 
-    <div class="p-6 sm:p-8">
+    <div class="p-6 sm:p-10">
       <!-- Header: score + summary + actions -->
       <div class="rounded-xl border border-editor-border bg-editor-card/90 p-6">
         <div class="flex flex-col lg:flex-row lg:items-center gap-5">
