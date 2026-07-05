@@ -85,6 +85,7 @@
           {{if eq .InputType "github"}}
           <button type="button"
                   hx-post="/report/{{$r.Slug}}/rescan" hx-swap="none"
+                  hx-on::response-error="document.getElementById('rescan-error').textContent = event.detail.xhr.responseText; document.getElementById('rescan-error').classList.remove('hidden')"
                   class="inline-flex items-center gap-1.5 rounded-md border border-editor-border bg-editor-bg px-3 py-1.5 text-xs font-medium text-gray-300 hover:bg-editor-surface transition-colors">
             {{template "icon-refresh" .}} Rescan
           </button>
@@ -101,6 +102,11 @@
             {{template "icon-trash" .}} Delete
           </button>
         {{end}}
+      </div>
+
+      {{if eq .InputType "github"}}
+      <div id="rescan-error" class="hidden mt-3 rounded-md border border-danger/40 bg-danger/10 px-4 py-3 text-sm text-danger"></div>
+      {{end}}
       </div>
     </div>
 
