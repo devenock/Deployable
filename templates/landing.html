@@ -288,7 +288,13 @@ CMD ["./server"]</code></pre>
 
     <div class="mt-14 grid gap-4 sm:grid-cols-2">
       <div class="rounded-lg border border-editor-border bg-editor-card/60 p-6" data-reveal>
-        <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-danger/10 text-lg">🕳️</div>
+        <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-danger/10 text-danger">
+          <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="5" y="11" width="14" height="9" rx="2" stroke="currentColor" stroke-width="1.8"/>
+            <path d="M8 11V8a4 4 0 0 1 7.5-1.9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+            <circle cx="12" cy="15.5" r="1.2" fill="currentColor"/>
+          </svg>
+        </div>
         <h3 class="mt-4 font-semibold text-white">Security debt ships silently</h3>
         <p class="mt-2 text-sm text-gray-400">
           Hardcoded secrets, missing auth checks, and open endpoints don't show up in a
@@ -296,7 +302,14 @@ CMD ["./server"]</code></pre>
         </p>
       </div>
       <div class="rounded-lg border border-editor-border bg-editor-card/60 p-6" data-reveal data-reveal-delay="100">
-        <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-warn/10 text-lg">🎲</div>
+        <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-warn/10 text-warn">
+          <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="3.5" y="4" width="17" height="6" rx="1.5" stroke="currentColor" stroke-width="1.8"/>
+            <rect x="3.5" y="14" width="17" height="6" rx="1.5" stroke="currentColor" stroke-width="1.8"/>
+            <circle cx="7.5" cy="7" r="1" fill="currentColor"/>
+            <circle cx="7.5" cy="17" r="1" fill="currentColor"/>
+          </svg>
+        </div>
         <h3 class="mt-4 font-semibold text-white">Guessing at infrastructure</h3>
         <p class="mt-2 text-sm text-gray-400">
           Wrong instance size, no health checks, no CI — teams find out by trial and
@@ -304,7 +317,13 @@ CMD ["./server"]</code></pre>
         </p>
       </div>
       <div class="rounded-lg border border-editor-border bg-editor-card/60 p-6" data-reveal data-reveal-delay="200">
-        <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-brand/10 text-lg">🔁</div>
+        <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-brand/10 text-brand">
+          <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="m4 7 1.5 1.5L9 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M12 7h8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+            <path d="M4 16.5h4M12 16.5h8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+          </svg>
+        </div>
         <h3 class="mt-4 font-semibold text-white">No shared bar for "ready"</h3>
         <p class="mt-2 text-sm text-gray-400">
           Every developer checks something different, if anything at all — there's no
@@ -312,7 +331,13 @@ CMD ["./server"]</code></pre>
         </p>
       </div>
       <div class="rounded-lg border border-editor-border bg-editor-card/60 p-6" data-reveal data-reveal-delay="300">
-        <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-success/10 text-lg">⏱️</div>
+        <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-success/10 text-success">
+          <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.8"/>
+            <path d="M11 7.5V11l2.5 1.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="m20 20-3.2-3.2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+          </svg>
+        </div>
         <h3 class="mt-4 font-semibold text-white">Manual review doesn't scale</h3>
         <p class="mt-2 text-sm text-gray-400">
           A senior engineer eyeballing a PR catches some things. It won't catch a
