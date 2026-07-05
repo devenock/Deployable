@@ -201,13 +201,31 @@ type ReportSummary struct {
 	InputRef  string
 }
 
-// ListReportsByUser returns a page of a user's reports (most recent first),
-// optionally filtered by a case-insensitive substring match against the
-// source (input_ref), language, or framework. total is the full matching
-// count (for pagination), computed in the same round trip via a window
-// function.
-func ListReportsByUser(ctx context.Context, pool *pgxpool.Pool, userID uuid.UUID, search string, limit, offset int) ([]*ReportSummary, int, error) {
-	rows, err := pool.Query(ctx, `
+// ReportListFilter narrows ListReportsByUser's results beyond the plain
+// user_id scope. Zero-value fields mean "don't filter on this."
+type ReportListFilter struct {
+	Search string // substring match against source, language, or framework
+	Type   string // "" | "zip" | "github" | "cli" — exact match against input_type
+	Status string // "" | "attention" (readiness_score < 60) | "ready" (>= 60)
+	Sort   string // "" (== newest) | "newest" | "oldest" | "score_desc" | "score_asc"
+}
+
+// ListReportsByUser returns a page of a user's reports matching filter,
+// most recent first unless filter.Sort says otherwise. total is the full
+// matching count (for pagination), computed in the same round trip via a
+// window function.
+func ListReportsByUser(ctx context.Context, pool *pgxpool.Pool, userID uuid.UUID, filter ReportListFilter, limit, offset int) ([]*ReportSummary, int, error) {
+	orderBy := "r.created_at DESC"
+	switch filter.Sort {
+	case "oldest":
+		orderBy = "r.created_at ASC"
+	case "score_desc":
+		orderBy = "r.readiness_score DESC"
+	case "score_asc":
+		orderBy = "r.readiness_score ASC"
+	}
+
+	query := fmt.Sprintf(`
 		SELECT r.id, r.job_id, r.user_id, r.slug, r.is_public,
 		       r.language, r.language_version, r.framework, r.databases, r.services,
 		       r.readiness_score, r.complexity_score, r.security_score,
@@ -222,13 +240,21 @@ func ListReportsByUser(ctx context.Context, pool *pgxpool.Pool, userID uuid.UUID
 		WHERE r.user_id = $1
 		  AND (
 		    $2 = '' OR
-		    j.input_ref ILIKE '%' || $2 || '%' OR
-		    r.language ILIKE '%' || $2 || '%' OR
-		    r.framework ILIKE '%' || $2 || '%'
+		    j.input_ref ILIKE '%%' || $2 || '%%' OR
+		    r.language ILIKE '%%' || $2 || '%%' OR
+		    r.framework ILIKE '%%' || $2 || '%%'
 		  )
-		ORDER BY r.created_at DESC
-		LIMIT $3 OFFSET $4
-	`, userID, search, limit, offset)
+		  AND ($3 = '' OR j.input_type::text = $3)
+		  AND (
+		    $4 = '' OR
+		    ($4 = 'attention' AND r.readiness_score < 60) OR
+		    ($4 = 'ready' AND r.readiness_score >= 60)
+		  )
+		ORDER BY %s
+		LIMIT $5 OFFSET $6
+	`, orderBy)
+
+	rows, err := pool.Query(ctx, query, userID, filter.Search, filter.Type, filter.Status, limit, offset)
 	if err != nil {
 		return nil, 0, fmt.Errorf("list reports by user: %w", err)
 	}
