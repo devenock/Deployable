@@ -28,7 +28,7 @@
   <div class="absolute inset-0 bg-grid -z-10"></div>
   <div class="glow -z-10 top-[-8rem] left-1/2 -translate-x-1/2 h-72 w-[42rem] bg-brand/10"></div>
 
-  <div class="max-w-4xl mx-auto px-4 py-12">
+  <div class="max-w-5xl mx-auto px-4 py-10 sm:py-12">
 
     {{if .User}}
     <a href="/dashboard?tab=reports" data-dash-nav-trigger="reports"
@@ -41,73 +41,75 @@
 
     <!-- Header: score + summary + actions -->
     <div class="fade-up {{if .User}}mt-4{{end}} rounded-xl border border-editor-border bg-editor-card/90 backdrop-blur-sm p-6 shadow-2xl shadow-black/40">
-      <div class="flex flex-col sm:flex-row items-start sm:items-center gap-6">
-        <div class="flex flex-col items-center justify-center rounded-lg bg-editor-bg border border-editor-border w-24 h-24 shrink-0">
-          <span class="text-3xl font-bold {{scoreColor $r.ReadinessScore}}">{{$r.ReadinessScore}}</span>
-          <span class="text-[10px] text-gray-500">/100</span>
-        </div>
-        <div class="min-w-0">
-          {{if .InputRef}}
-          <div class="flex items-center gap-2">
-            <span class="text-sm font-medium text-gray-300 truncate">{{.InputRef}}</span>
-            <span class="shrink-0 rounded-full border border-editor-border px-2 py-0.5 text-[10px] uppercase tracking-wide text-gray-500">{{.InputType}}</span>
+      <div class="flex flex-col lg:flex-row lg:items-center gap-5">
+        <div class="flex items-start sm:items-center gap-5 flex-1 min-w-0">
+          <div class="flex flex-col items-center justify-center rounded-lg bg-editor-bg border border-editor-border w-20 h-20 shrink-0">
+            <span class="text-2xl font-bold {{scoreColor $r.ReadinessScore}}">{{$r.ReadinessScore}}</span>
+            <span class="text-[10px] text-gray-500">/100</span>
           </div>
-          {{end}}
-          <h1 class="{{if .InputRef}}mt-1{{end}} text-lg font-semibold text-white">
-            {{if $r.Language}}{{$r.Language}}{{else}}Unknown stack{{end}}
-            {{if $r.LanguageVersion}}<span class="text-gray-400 font-normal">{{$r.LanguageVersion}}</span>{{end}}
-            {{if $r.Framework}}<span class="text-gray-400 font-normal">· {{$r.Framework}}</span>{{end}}
-            {{range $r.Databases}}<span class="text-gray-400 font-normal">· {{.}}</span>{{end}}
-          </h1>
-          <p class="mt-1 text-sm text-gray-500">Analyzed {{timeAgo $r.CreatedAt}}</p>
-          {{if .Authenticated}}
-            {{if $sem.readiness_summary}}
-            <p class="mt-3 text-sm text-gray-300">{{$sem.readiness_summary}}</p>
+          <div class="min-w-0 flex-1">
+            {{if .InputRef}}
+            <div class="flex items-center gap-2">
+              <span class="text-sm font-medium text-gray-300 truncate">{{.InputRef}}</span>
+              <span class="shrink-0 rounded-full border border-editor-border px-2 py-0.5 text-[10px] uppercase tracking-wide text-gray-500">{{.InputType}}</span>
+            </div>
             {{end}}
-          {{end}}
+            <h1 class="{{if .InputRef}}mt-1{{end}} text-lg font-semibold text-white">
+              {{if $r.Language}}{{$r.Language}}{{else}}Unknown stack{{end}}
+              {{if $r.LanguageVersion}}<span class="text-gray-400 font-normal">{{$r.LanguageVersion}}</span>{{end}}
+              {{if $r.Framework}}<span class="text-gray-400 font-normal">· {{$r.Framework}}</span>{{end}}
+              {{range $r.Databases}}<span class="text-gray-400 font-normal">· {{.}}</span>{{end}}
+            </h1>
+            <p class="mt-1 text-xs text-gray-500">Analyzed {{timeAgo $r.CreatedAt}}</p>
+          </div>
         </div>
-      </div>
 
-      <div class="mt-5 flex flex-wrap items-center gap-2 border-t border-editor-border pt-5">
-        <button type="button" data-copy="report-url"
-                class="inline-flex items-center gap-1.5 rounded-md border border-editor-border bg-editor-bg px-3 py-1.5 text-xs font-medium text-gray-300 hover:bg-editor-surface transition-colors">
-          {{template "icon-link" .}} Copy link
-        </button>
-
-        {{if and .Authenticated $hasFiles}}
-        <a href="/report/{{$r.Slug}}/download"
-           class="inline-flex items-center gap-1.5 rounded-md border border-editor-border bg-editor-bg px-3 py-1.5 text-xs font-medium text-gray-300 hover:bg-editor-surface transition-colors">
-          {{template "icon-download" .}} Download files
-        </a>
-        {{end}}
-
-        {{if .IsOwner}}
-          {{if eq .InputType "github"}}
-          <button type="button"
-                  hx-post="/report/{{$r.Slug}}/rescan" hx-swap="none"
-                  hx-on::response-error="document.getElementById('rescan-error').textContent = event.detail.xhr.responseText; document.getElementById('rescan-error').classList.remove('hidden')"
+        <div class="flex flex-wrap items-center gap-2 lg:shrink-0">
+          <button type="button" data-copy="report-url"
                   class="inline-flex items-center gap-1.5 rounded-md border border-editor-border bg-editor-bg px-3 py-1.5 text-xs font-medium text-gray-300 hover:bg-editor-surface transition-colors">
-            {{template "icon-refresh" .}} Rescan
+            {{template "icon-link" .}} Copy link
           </button>
-          {{else}}
-          <a href="/analyze"
+
+          {{if and .Authenticated $hasFiles}}
+          <a href="/report/{{$r.Slug}}/download"
              class="inline-flex items-center gap-1.5 rounded-md border border-editor-border bg-editor-bg px-3 py-1.5 text-xs font-medium text-gray-300 hover:bg-editor-surface transition-colors">
-            {{template "icon-refresh" .}} Analyze again
+            {{template "icon-download" .}} Download files
           </a>
           {{end}}
-          <button type="button"
-                  hx-delete="/report/{{$r.Slug}}" hx-swap="none" hx-confirm="Delete this report? This can't be undone."
-                  hx-on::after-request="if(event.detail.successful) window.location='/dashboard'"
-                  class="ml-auto inline-flex items-center gap-1.5 rounded-md border border-danger/30 bg-danger/5 px-3 py-1.5 text-xs font-medium text-danger hover:bg-danger/10 transition-colors">
-            {{template "icon-trash" .}} Delete
-          </button>
-        {{end}}
+
+          {{if .IsOwner}}
+            {{if eq .InputType "github"}}
+            <button type="button"
+                    hx-post="/report/{{$r.Slug}}/rescan" hx-swap="none"
+                    hx-on::response-error="document.getElementById('rescan-error').textContent = event.detail.xhr.responseText; document.getElementById('rescan-error').classList.remove('hidden')"
+                    class="inline-flex items-center gap-1.5 rounded-md border border-editor-border bg-editor-bg px-3 py-1.5 text-xs font-medium text-gray-300 hover:bg-editor-surface transition-colors">
+              {{template "icon-refresh" .}} Rescan
+            </button>
+            {{else}}
+            <a href="/analyze"
+               class="inline-flex items-center gap-1.5 rounded-md border border-editor-border bg-editor-bg px-3 py-1.5 text-xs font-medium text-gray-300 hover:bg-editor-surface transition-colors">
+              {{template "icon-refresh" .}} Analyze again
+            </a>
+            {{end}}
+            <button type="button"
+                    hx-delete="/report/{{$r.Slug}}" hx-swap="none" hx-confirm="Delete this report? This can't be undone."
+                    hx-on::after-request="if(event.detail.successful) window.location='/dashboard'"
+                    class="inline-flex items-center gap-1.5 rounded-md border border-danger/30 bg-danger/5 px-3 py-1.5 text-xs font-medium text-danger hover:bg-danger/10 transition-colors">
+              {{template "icon-trash" .}} Delete
+            </button>
+          {{end}}
+        </div>
       </div>
 
-      {{if eq .InputType "github"}}
-      <div id="rescan-error" class="hidden mt-3 rounded-md border border-danger/40 bg-danger/10 px-4 py-3 text-sm text-danger"></div>
+      {{if .Authenticated}}
+        {{if $sem.readiness_summary}}
+        <p class="mt-5 pt-5 border-t border-editor-border text-sm text-gray-300 leading-relaxed">{{$sem.readiness_summary}}</p>
+        {{end}}
       {{end}}
-      </div>
+
+      {{if eq .InputType "github"}}
+      <div id="rescan-error" class="hidden mt-4 rounded-md border border-danger/40 bg-danger/10 px-4 py-3 text-sm text-danger"></div>
+      {{end}}
     </div>
 
     {{if not .Authenticated}}
@@ -126,9 +128,9 @@
       </div>
     </div>
     {{else}}
-    <!-- Tabs -->
-    <div data-tabs>
-      <div class="fade-up mt-6 flex flex-wrap gap-1 rounded-lg border border-editor-border bg-editor-card p-1 [animation-delay:60ms]">
+    <!-- Tabs + content, unified into one card -->
+    <div data-tabs class="fade-up mt-6 rounded-xl border border-editor-border bg-editor-card/90 backdrop-blur-sm shadow-2xl shadow-black/40 overflow-hidden [animation-delay:60ms]">
+      <div class="flex flex-wrap gap-1 border-b border-editor-border p-2">
         <button type="button" data-tab-trigger="overview" aria-selected="true"
                 class="rounded-md bg-brand px-3.5 py-1.5 text-sm font-medium text-white shadow-sm transition-colors">Overview</button>
         <button type="button" data-tab-trigger="security" aria-selected="false"
@@ -143,7 +145,7 @@
                 class="rounded-md px-3.5 py-1.5 text-sm font-medium text-gray-400 hover:text-gray-200 transition-colors">Generated Files{{if $hasFiles}} ({{len $r.GeneratedFiles}}){{end}}</button>
       </div>
 
-      <div class="fade-up mt-4 rounded-xl border border-editor-border bg-editor-card/90 backdrop-blur-sm p-6 shadow-2xl shadow-black/40 [animation-delay:100ms]">
+      <div class="p-6">
 
         <!-- Overview -->
         <div data-tab-panel="overview">
@@ -152,7 +154,7 @@
             <h2 class="text-sm font-semibold uppercase tracking-wide text-danger">🔴 Critical Issues ({{len $sem.critical_gaps}})</h2>
             <ul class="mt-3 space-y-2">
               {{range $sem.critical_gaps}}
-              <li class="rounded-md border border-danger/30 bg-danger/5 px-4 py-2 text-sm text-gray-200">{{.}}</li>
+              <li class="rounded-md border-l-[3px] border-danger bg-danger/5 pl-3.5 pr-3 py-2.5 text-sm text-gray-200">{{.}}</li>
               {{end}}
             </ul>
           </section>
@@ -163,7 +165,7 @@
             <h2 class="text-sm font-semibold uppercase tracking-wide text-warn">⚠️ Warnings ({{len $sem.warnings}})</h2>
             <ul class="mt-3 space-y-2">
               {{range $sem.warnings}}
-              <li class="rounded-md border border-warn/30 bg-warn/5 px-4 py-2 text-sm text-gray-200">{{.}}</li>
+              <li class="rounded-md border-l-[3px] border-warn bg-warn/5 pl-3.5 pr-3 py-2.5 text-sm text-gray-200">{{.}}</li>
               {{end}}
             </ul>
           </section>
@@ -174,7 +176,7 @@
             <h2 class="text-sm font-semibold uppercase tracking-wide text-gray-400">💡 Suggestions ({{len $sem.suggestions}})</h2>
             <ul class="mt-3 space-y-2">
               {{range $sem.suggestions}}
-              <li class="rounded-md border border-editor-border bg-editor-bg px-4 py-2 text-sm text-gray-300">{{.}}</li>
+              <li class="rounded-md border-l-[3px] border-editor-border bg-editor-bg pl-3.5 pr-3 py-2.5 text-sm text-gray-300">{{.}}</li>
               {{end}}
             </ul>
           </section>
@@ -192,14 +194,14 @@
             <span class="font-semibold {{scoreColor $r.SecurityScore}}">{{$r.SecurityScore}}/100</span>
           </div>
           {{if $sem.auth_assessment}}
-          <p class="mt-3 text-sm text-gray-300">{{$sem.auth_assessment}}</p>
+          <p class="mt-3 text-sm text-gray-300 leading-relaxed">{{$sem.auth_assessment}}</p>
           {{end}}
 
           {{if $secrets}}
           <div class="mt-5 space-y-2">
             <p class="text-xs uppercase tracking-wide text-gray-500">Hardcoded secret scan</p>
             {{range $secrets}}
-            <div class="flex items-start gap-2 rounded-md border px-3 py-2 text-xs {{severityColor .Severity}}">
+            <div class="flex items-start gap-2 rounded-md border-l-[3px] px-3.5 py-2.5 text-xs {{severityColor .Severity}}">
               <span class="font-semibold uppercase">{{.Severity}}</span>
               <span>{{.Name}} — {{.File}}{{if .Line}}:{{.Line}}{{end}}</span>
             </div>
@@ -213,7 +215,7 @@
           <div class="mt-5 space-y-2">
             <p class="text-xs uppercase tracking-wide text-gray-500">Semantic security review</p>
             {{range $risks}}
-            <div class="rounded-md border px-3 py-2 text-xs {{severityColor .severity}}">
+            <div class="rounded-md border-l-[3px] px-3.5 py-2.5 text-xs {{severityColor .severity}}">
               <span class="font-semibold uppercase">{{.severity}}</span> — {{.description}}
               {{if .fix}}<div class="mt-1 text-gray-400">Fix: {{.fix}}</div>{{end}}
             </div>
@@ -225,30 +227,38 @@
         <!-- Infrastructure -->
         <div data-tab-panel="infra" class="hidden">
           <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
-            <div class="rounded-md border border-editor-border bg-editor-bg px-3 py-2">
-              Dockerfile {{if $infra.DockerfileExists}}<span class="text-success">✓</span>{{else}}<span class="text-danger">✗</span>{{end}}
+            <div class="flex items-center justify-between gap-2 rounded-md border border-editor-border bg-editor-bg px-3.5 py-2.5">
+              <span class="text-gray-300">Dockerfile</span>
+              {{if $infra.DockerfileExists}}<span class="text-success">✓</span>{{else}}<span class="text-danger">✗</span>{{end}}
             </div>
-            <div class="rounded-md border border-editor-border bg-editor-bg px-3 py-2">
-              docker-compose {{if $infra.ComposeExists}}<span class="text-success">✓</span>{{else}}<span class="text-gray-500">—</span>{{end}}
+            <div class="flex items-center justify-between gap-2 rounded-md border border-editor-border bg-editor-bg px-3.5 py-2.5">
+              <span class="text-gray-300">docker-compose</span>
+              {{if $infra.ComposeExists}}<span class="text-success">✓</span>{{else}}<span class="text-gray-500">—</span>{{end}}
             </div>
-            <div class="rounded-md border border-editor-border bg-editor-bg px-3 py-2">
-              .env.example {{if $infra.EnvExampleExists}}<span class="text-success">✓</span>{{else}}<span class="text-danger">✗</span>{{end}}
+            <div class="flex items-center justify-between gap-2 rounded-md border border-editor-border bg-editor-bg px-3.5 py-2.5">
+              <span class="text-gray-300">.env.example</span>
+              {{if $infra.EnvExampleExists}}<span class="text-success">✓</span>{{else}}<span class="text-danger">✗</span>{{end}}
             </div>
-            <div class="rounded-md border border-editor-border bg-editor-bg px-3 py-2">
-              .gitignore covers .env {{if $infra.GitignoreCoversEnv}}<span class="text-success">✓</span>{{else}}<span class="text-danger">✗</span>{{end}}
+            <div class="flex items-center justify-between gap-2 rounded-md border border-editor-border bg-editor-bg px-3.5 py-2.5">
+              <span class="text-gray-300">.gitignore covers .env</span>
+              {{if $infra.GitignoreCoversEnv}}<span class="text-success">✓</span>{{else}}<span class="text-danger">✗</span>{{end}}
             </div>
-            <div class="rounded-md border border-editor-border bg-editor-bg px-3 py-2">
-              CI config {{if $infra.CIConfigExists}}<span class="text-success">✓</span>{{else}}<span class="text-gray-500">—</span>{{end}}
+            <div class="flex items-center justify-between gap-2 rounded-md border border-editor-border bg-editor-bg px-3.5 py-2.5">
+              <span class="text-gray-300">CI config</span>
+              {{if $infra.CIConfigExists}}<span class="text-success">✓</span>{{else}}<span class="text-gray-500">—</span>{{end}}
             </div>
-            <div class="rounded-md border border-editor-border bg-editor-bg px-3 py-2">
-              Health check {{if $infra.HealthCheckFound}}<span class="text-success">✓</span>{{else}}<span class="text-danger">✗</span>{{end}}
+            <div class="flex items-center justify-between gap-2 rounded-md border border-editor-border bg-editor-bg px-3.5 py-2.5">
+              <span class="text-gray-300">Health check</span>
+              {{if $infra.HealthCheckFound}}<span class="text-success">✓</span>{{else}}<span class="text-danger">✗</span>{{end}}
             </div>
-            <div class="rounded-md border border-editor-border bg-editor-bg px-3 py-2">
-              Lock file {{if $infra.LockFileFound}}<span class="text-success">✓</span>{{else}}<span class="text-danger">✗</span>{{end}}
+            <div class="flex items-center justify-between gap-2 rounded-md border border-editor-border bg-editor-bg px-3.5 py-2.5">
+              <span class="text-gray-300">Lock file</span>
+              {{if $infra.LockFileFound}}<span class="text-success">✓</span>{{else}}<span class="text-danger">✗</span>{{end}}
             </div>
             {{if $stack}}
-            <div class="rounded-md border border-editor-border bg-editor-bg px-3 py-2">
-              Tests {{if $stack.HasTests}}<span class="text-success">✓</span>{{else}}<span class="text-gray-500">—</span>{{end}}
+            <div class="flex items-center justify-between gap-2 rounded-md border border-editor-border bg-editor-bg px-3.5 py-2.5">
+              <span class="text-gray-300">Tests</span>
+              {{if $stack.HasTests}}<span class="text-success">✓</span>{{else}}<span class="text-gray-500">—</span>{{end}}
             </div>
             {{end}}
           </div>
@@ -259,24 +269,26 @@
 
         <!-- Resources -->
         <div data-tab-panel="resources" class="hidden">
-          <div class="grid grid-cols-2 gap-4 text-sm">
-            <div>
-              <p class="text-xs text-gray-500">Minimum</p>
-              <p class="mt-1 text-gray-200">
-                {{if $r.MinRAMMB}}{{$r.MinRAMMB}}MB RAM{{end}}
-                {{if $r.MinCPU}}· {{$r.MinCPU}} vCPU{{end}}
-              </p>
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div class="rounded-lg border border-editor-border bg-editor-bg p-4">
+              <p class="text-xs text-gray-500">Min RAM</p>
+              <p class="mt-1 text-xl font-bold text-white">{{if $r.MinRAMMB}}{{$r.MinRAMMB}}<span class="text-sm font-normal text-gray-400">MB</span>{{else}}—{{end}}</p>
             </div>
-            <div>
-              <p class="text-xs text-gray-500">Recommended</p>
-              <p class="mt-1 text-gray-200">
-                {{if $r.RecRAMMB}}{{$r.RecRAMMB}}MB RAM{{end}}
-                {{if $r.StorageGB}}· {{$r.StorageGB}}GB storage{{end}}
-              </p>
+            <div class="rounded-lg border border-editor-border bg-editor-bg p-4">
+              <p class="text-xs text-gray-500">Min vCPU</p>
+              <p class="mt-1 text-xl font-bold text-white">{{if $r.MinCPU}}{{$r.MinCPU}}{{else}}—{{end}}</p>
+            </div>
+            <div class="rounded-lg border border-editor-border bg-editor-bg p-4">
+              <p class="text-xs text-gray-500">Recommended RAM</p>
+              <p class="mt-1 text-xl font-bold text-white">{{if $r.RecRAMMB}}{{$r.RecRAMMB}}<span class="text-sm font-normal text-gray-400">MB</span>{{else}}—{{end}}</p>
+            </div>
+            <div class="rounded-lg border border-editor-border bg-editor-bg p-4">
+              <p class="text-xs text-gray-500">Storage</p>
+              <p class="mt-1 text-xl font-bold text-white">{{if $r.StorageGB}}{{$r.StorageGB}}<span class="text-sm font-normal text-gray-400">GB</span>{{else}}—{{end}}</p>
             </div>
           </div>
-          {{if $r.EstRPS}}<p class="mt-3 text-xs text-gray-500">Estimated capacity: ~{{$r.EstRPS}} req/s</p>{{end}}
-          {{if $r.ResourceReasoning}}<p class="mt-4 text-sm text-gray-400">{{$r.ResourceReasoning}}</p>{{end}}
+          {{if $r.EstRPS}}<p class="mt-4 text-xs text-gray-500">Estimated capacity: ~{{$r.EstRPS}} req/s</p>{{end}}
+          {{if $r.ResourceReasoning}}<p class="mt-4 text-sm text-gray-400 leading-relaxed">{{$r.ResourceReasoning}}</p>{{end}}
         </div>
 
         <!-- Deploy -->
@@ -290,7 +302,7 @@
                 <span class="text-sm text-gray-400">{{.monthly_usd}}</span>
               </div>
               <p class="mt-1 text-xs text-gray-500">{{.instance_type}}</p>
-              <p class="mt-2 text-sm text-gray-300">{{.reasoning}}</p>
+              <p class="mt-2 text-sm text-gray-300 leading-relaxed">{{.reasoning}}</p>
               {{if .deploy_steps}}
               <ol class="mt-3 space-y-1 border-t border-editor-border pt-3 text-xs text-gray-400 list-decimal list-inside">
                 {{range .deploy_steps}}<li>{{.}}</li>{{end}}
@@ -307,7 +319,7 @@
         <!-- Files -->
         <div data-tab-panel="files" class="hidden">
           {{if $hasFiles}}
-          <p class="mb-4 text-sm text-gray-400">
+          <p class="mb-4 text-sm text-gray-400 leading-relaxed">
             Ready-to-use deployment files for this stack, generated fresh every time — regardless of what your
             repo already has. If you already have your own Dockerfile, CI workflow, etc., treat these as a
             reference and diff before overwriting anything.

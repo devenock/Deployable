@@ -293,13 +293,13 @@ func templateFuncs() template.FuncMap {
 		"severityColor": func(sev string) string {
 			switch sev {
 			case "critical":
-				return "bg-red-900 text-red-200 border-red-700"
+				return "bg-red-500/10 text-red-200 border-red-500"
 			case "high":
-				return "bg-orange-900 text-orange-200 border-orange-700"
+				return "bg-orange-500/10 text-orange-200 border-orange-500"
 			case "medium":
-				return "bg-yellow-900 text-yellow-200 border-yellow-700"
+				return "bg-yellow-500/10 text-yellow-200 border-yellow-500"
 			default:
-				return "bg-gray-800 text-gray-300 border-gray-600"
+				return "bg-gray-500/10 text-gray-300 border-gray-500"
 			}
 		},
 		"timeAgo": timeAgo,
