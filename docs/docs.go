@@ -285,7 +285,7 @@ const docTemplate = `{
         },
         "/analyze/github": {
             "post": {
-                "description": "Requires a signed-in session (see RequireAuth). Parses a github.com/owner/repo URL, fetches repo metadata, and downloads its default-branch zipball (same MAX_RAW_UPLOAD_BYTES/MAX_UPLOAD_BYTES limits and node_modules/vendor/.git filtering as direct ZIP upload). Public repos work as soon as you're signed in; private repos additionally require the requester to have connected GitHub via GET /auth/github/connect. Kicks off the same analysis pipeline as the ZIP upload path.",
+                "description": "Requires a signed-in session (see RequireAuth) and that owner/repo is already on the requester's watchlist (models.IsRepoConnected) — connect GitHub via GET /auth/github/connect, browse an account's repos, and add the one you want before this succeeds; pasting an arbitrary not-yet-imported URL is rejected with 403 regardless of visibility. Fetches repo metadata and downloads its default-branch zipball (same MAX_RAW_UPLOAD_BYTES/MAX_UPLOAD_BYTES limits and node_modules/vendor/.git filtering as direct ZIP upload). Kicks off the same analysis pipeline as the ZIP upload path.",
                 "consumes": [
                     "application/x-www-form-urlencoded"
                 ],
@@ -311,6 +311,12 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Invalid URL or corrupted archive",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "403": {
+                        "description": "Repository isn't on the requester's watchlist yet — import it first",
                         "schema": {
                             "type": "string"
                         }
@@ -1176,7 +1182,7 @@ const docTemplate = `{
         },
         "/report/{slug}/rescan": {
             "post": {
-                "description": "Requires a session cookie and ownership of the report. Only GitHub-sourced reports can be rescanned (re-fetching a URL is cheap and idempotent) — ZIP-sourced reports aren't, since the original upload isn't retained after analysis. Re-fetches the same repository and kicks off a fresh analysis job, identical to submitting the URL again.",
+                "description": "Requires a session cookie and ownership of the report. Only GitHub-sourced reports can be rescanned (re-fetching a URL is cheap and idempotent) — ZIP-sourced reports aren't, since the original upload isn't retained after analysis. Also requires the source repo to still be on the requester's watchlist (see startGitHubAnalysis) — if it was removed since the report was created, re-import it first. Re-fetches the same repository and kicks off a fresh analysis job, identical to submitting the URL again.",
                 "produces": [
                     "text/html"
                 ],
@@ -1201,7 +1207,7 @@ const docTemplate = `{
                         }
                     },
                     "403": {
-                        "description": "Not the owner, or not a GitHub-sourced report",
+                        "description": "Not the owner, not a GitHub-sourced report, or the repo is no longer on the watchlist",
                         "schema": {
                             "type": "string"
                         }
