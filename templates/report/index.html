@@ -103,7 +103,10 @@
 
       {{if .Authenticated}}
         {{if $sem.readiness_summary}}
-        <p class="mt-5 pt-5 border-t border-editor-border text-sm text-gray-300 leading-relaxed">{{$sem.readiness_summary}}</p>
+        <div class="mt-5 pt-5 border-t border-editor-border">
+          <p data-clamp class="text-sm text-gray-300 leading-relaxed line-clamp-2">{{$sem.readiness_summary}}</p>
+          <button type="button" data-clamp-toggle class="hidden mt-1.5 text-xs text-brand hover:underline">Show more</button>
+        </div>
         {{end}}
       {{end}}
 

@@ -7,7 +7,27 @@ document.addEventListener('DOMContentLoaded', function () {
   initScrollReveal();
   initSidebar();
   initDashboardSections();
+  initClampToggles();
 });
+
+// [data-clamp] text (e.g. the report page's AI summary) starts visually
+// truncated via the line-clamp-2 CSS class. If it actually overflows at
+// that clamp, reveal the adjacent [data-clamp-toggle] button to expand/
+// collapse it; short text that never overflows just stays as-is with no
+// button shown.
+function initClampToggles() {
+  document.querySelectorAll('[data-clamp]').forEach(function (el) {
+    var button = el.nextElementSibling;
+    if (!button || !button.hasAttribute('data-clamp-toggle')) return;
+    if (el.scrollHeight <= el.clientHeight + 1) return;
+
+    button.classList.remove('hidden');
+    button.addEventListener('click', function () {
+      var stillClamped = el.classList.toggle('line-clamp-2');
+      button.textContent = stillClamped ? 'Show more' : 'Show less';
+    });
+  });
+}
 
 // Switches between the dashboard's sections (Overview / Analyze) without a
 // page navigation — the sidebar's Dashboard/Analyze links carry both a real
