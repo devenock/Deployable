@@ -125,7 +125,7 @@
               </div>
               <span data-dropzone-label class="text-gray-200 font-medium">Drag &amp; drop your project as a ZIP</span>
               <span class="text-sm text-gray-500">or click to browse</span>
-              <span class="text-xs text-gray-600">Max {{.MaxUpload}}MB</span>
+              <span class="text-xs text-gray-600">Max {{.MaxUpload}}MB of source — zip the whole project, node_modules and friends are filtered out automatically</span>
               <input type="file" id="zip-input" name="file" accept=".zip" class="hidden"
                      hx-post="/analyze/zip"
                      hx-encoding="multipart/form-data"
@@ -140,9 +140,10 @@
           </form>
 
           <p class="mt-4 text-center text-xs text-gray-600">
-            Tip: exclude <code class="text-gray-500">node_modules</code>, <code class="text-gray-500">vendor</code>,
-            <code class="text-gray-500">.git</code>, and build output before zipping — they're skipped during
-            analysis anyway and only eat into the size limit.
+            No need to exclude <code class="text-gray-500">node_modules</code>, <code class="text-gray-500">vendor</code>,
+            <code class="text-gray-500">.git</code>, or build output before zipping — they're filtered out
+            automatically and never count against the size limit. Excluding them yourself just makes for a
+            smaller, faster upload.
           </p>
         </div>
 
