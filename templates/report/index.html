@@ -31,7 +31,6 @@
   <div class="max-w-4xl mx-auto px-4 py-12">
 
     <code id="report-url" class="hidden">{{.AppURL}}/report/{{$r.Slug}}</code>
-    <div id="report-meta" class="hidden" data-slug="{{$r.Slug}}" data-language="{{if $r.Language}}{{$r.Language}}{{else}}Unknown stack{{end}}" data-score="{{$r.ReadinessScore}}"></div>
 
     <!-- Header: score + summary + actions -->
     <div class="fade-up rounded-xl border border-editor-border bg-editor-card/90 backdrop-blur-sm p-6 shadow-2xl shadow-black/40">

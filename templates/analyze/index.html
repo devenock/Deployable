@@ -23,7 +23,27 @@
   <div class="glow -z-10 top-[-6rem] left-1/2 -translate-x-1/2 h-80 w-[36rem] bg-brand/15"></div>
 
   <div class="max-w-xl mx-auto px-4 py-16">
-    {{template "analyze-form" .}}
+    <div class="text-center">
+      <h1 class="fade-up text-3xl font-bold text-white tracking-tight">Analyze your project</h1>
+      <p class="fade-up mt-2 text-gray-400 [animation-delay:60ms]">Get a deployment readiness report in under a minute.</p>
+    </div>
+
+    <!-- Locked: analysis always requires an account — a scan started
+         anonymously has no account to attach to later, so there'd be no
+         way to find it again after signing up. -->
+    <div class="fade-up mt-8 rounded-xl border border-editor-border bg-editor-card/90 backdrop-blur-sm p-10 text-center shadow-2xl shadow-black/40 [animation-delay:100ms]">
+      <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-brand/10 text-brand">
+        {{template "icon-lock-large" .}}
+      </div>
+      <h2 class="mt-4 text-lg font-semibold text-white">Sign in to analyze your project</h2>
+      <p class="mt-2 text-sm text-gray-400 max-w-sm mx-auto">
+        Every analysis is saved to your account so you can find it again later. Sign in or create a free account to get started.
+      </p>
+      <div class="mt-6 flex items-center justify-center gap-3">
+        <a href="/login" class="rounded-md bg-brand px-5 py-2.5 text-sm font-medium text-white shadow-lg shadow-brand/20 hover:bg-indigo-500 transition-colors">Sign in</a>
+        <a href="/register" class="rounded-md border border-editor-border px-5 py-2.5 text-sm font-medium text-gray-200 hover:bg-editor-card transition-colors">Create a free account</a>
+      </div>
+    </div>
   </div>
 </section>
 {{end}}
@@ -45,10 +65,12 @@
 {{end}}
 
 {{/* analyze-form: the actual "analyze a project" UI (tabs, dropzone, GitHub
-     form, CLI panel) with no page chrome around it — reused as-is by the
-     standalone /analyze page above and embedded directly into the
-     dashboard's Analyze section (see templates/dashboard/index.html), so
-     logged-in users never leave the dashboard shell to start an analysis. */}}
+     form, CLI panel) with no page chrome around it. Only ever rendered for a
+     signed-in user (analyze-index only calls it in the {{if .User}} branch
+     above; anonymous visitors get a sign-in gate instead) — reused as-is by
+     the standalone /analyze page and embedded directly into the dashboard's
+     Analyze section (see templates/dashboard/index.html), so logged-in users
+     never leave the dashboard shell to start an analysis. */}}
 {{define "analyze-form"}}
     <div class="text-center">
       <h1 class="fade-up text-3xl font-bold text-white tracking-tight">Analyze your project</h1>
@@ -63,16 +85,6 @@
     {{if .OAuthError}}
     <div class="mt-6 rounded-md border border-danger/40 bg-danger/10 px-4 py-3 text-sm text-danger">
       Could not connect GitHub. Please try again.
-    </div>
-    {{end}}
-
-    {{if not .User}}
-    <div id="recent-reports-section" class="hidden mt-6">
-      <p class="text-xs uppercase tracking-wide text-gray-500">Recent scans on this device</p>
-      <div id="recent-reports-list" class="mt-2 space-y-1.5"></div>
-      <p class="mt-2 text-xs text-gray-600">
-        <a href="/register" class="text-brand hover:underline">Create an account</a> to keep this list permanently and access it from any device.
-      </p>
     </div>
     {{end}}
 
@@ -113,7 +125,7 @@
               </div>
               <span data-dropzone-label class="text-gray-200 font-medium">Drag &amp; drop your project as a ZIP</span>
               <span class="text-sm text-gray-500">or click to browse</span>
-              <span class="text-xs text-gray-600">Max {{.MaxUpload}}MB · No account required</span>
+              <span class="text-xs text-gray-600">Max {{.MaxUpload}}MB</span>
               <input type="file" id="zip-input" name="file" accept=".zip" class="hidden"
                      hx-post="/analyze/zip"
                      hx-encoding="multipart/form-data"
@@ -151,13 +163,11 @@
               Analyze repository
             </button>
             <p class="mt-3 text-center text-xs text-gray-600">
-              Public repos: no account needed. Private repos:
+              Private repos:
               {{if .HasGitHubConnected}}
                 <span class="text-success">GitHub connected ✓</span>
-              {{else if .User}}
-                <a href="/auth/github/connect" class="text-brand hover:underline">Connect GitHub</a>
               {{else}}
-                <a href="/login" class="text-brand hover:underline">Log in</a>, then connect GitHub
+                <a href="/auth/github/connect" class="text-brand hover:underline">Connect GitHub</a>
               {{end}}
             </p>
             <div id="github-progress" class="htmx-indicator mt-3 flex items-center justify-center gap-2 text-xs text-gray-400">
@@ -200,26 +210,20 @@
           </div>
 
           <div id="api-key-section" class="mt-4">
-            {{if .User}}
-              <p class="text-sm text-gray-400">For a shareable report URL, add your API key:</p>
-              {{if .HasAPIKey}}
-                <div class="mt-2 flex items-center justify-between gap-2 rounded bg-black/30 pl-3 pr-2 py-2">
-                  <code class="text-xs text-gray-300 overflow-x-auto whitespace-nowrap">deployable . --api-key &lt;your key&gt;</code>
-                </div>
-                <button hx-post="/account/api-key" hx-target="#api-key-section" hx-swap="innerHTML"
-                        class="mt-2 text-xs text-brand hover:underline">
-                  Regenerate API key (invalidates the current one)
-                </button>
-              {{else}}
-                <button hx-post="/account/api-key" hx-target="#api-key-section" hx-swap="innerHTML"
-                        class="mt-3 w-full rounded-md bg-brand px-4 py-2.5 text-sm font-medium text-white shadow-lg shadow-brand/20 hover:bg-indigo-500 transition-colors">
-                  Generate API key
-                </button>
-              {{end}}
+            <p class="text-sm text-gray-400">Add your API key to save the report to your account and get a shareable URL — without one, <code class="text-gray-500">deployable .</code> only prints a local, offline report:</p>
+            {{if .HasAPIKey}}
+              <div class="mt-2 flex items-center justify-between gap-2 rounded bg-black/30 pl-3 pr-2 py-2">
+                <code class="text-xs text-gray-300 overflow-x-auto whitespace-nowrap">deployable . --api-key &lt;your key&gt;</code>
+              </div>
+              <button hx-post="/account/api-key" hx-target="#api-key-section" hx-swap="innerHTML"
+                      class="mt-2 text-xs text-brand hover:underline">
+                Regenerate API key (invalidates the current one)
+              </button>
             {{else}}
-              <p class="text-sm text-gray-400 text-center">
-                <a href="/register" class="text-brand hover:underline">Create a free account</a> to get an API key for shareable report URLs.
-              </p>
+              <button hx-post="/account/api-key" hx-target="#api-key-section" hx-swap="innerHTML"
+                      class="mt-3 w-full rounded-md bg-brand px-4 py-2.5 text-sm font-medium text-white shadow-lg shadow-brand/20 hover:bg-indigo-500 transition-colors">
+                Generate API key
+              </button>
             {{end}}
           </div>
         </div>

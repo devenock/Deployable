@@ -4,8 +4,6 @@ document.addEventListener('DOMContentLoaded', function () {
   initPasswordStrengthMeter();
   initTabs();
   initDropzones();
-  recordRecentReport();
-  renderRecentReports();
   initScrollReveal();
   initSidebar();
   initDashboardSections();
@@ -109,84 +107,6 @@ function initScrollReveal() {
   }, { threshold: 0.2 });
 
   items.forEach(function (el) { observer.observe(el); });
-}
-
-// --- anonymous "recent on this device" ---------------------------------
-//
-// No accounts, no cookies, no server-side state: just a capped list in
-// localStorage. recordRecentReport() runs on the report page and only
-// stores an entry when the URL has ?new=1 (set once, by the redirect that
-// follows a just-completed analysis) — that's what distinguishes "I just
-// created this" from "I'm viewing a link someone shared." renderRecentReports()
-// runs on the analyze page and shows the list when there's one and no
-// signed-in user (the section only exists in the DOM in that case).
-
-var RECENT_REPORTS_KEY = 'deployable_recent_reports';
-var RECENT_REPORTS_MAX = 10;
-
-function readRecentReports() {
-  try {
-    var raw = localStorage.getItem(RECENT_REPORTS_KEY);
-    return raw ? JSON.parse(raw) : [];
-  } catch (e) {
-    return [];
-  }
-}
-
-function recordRecentReport() {
-  var meta = document.getElementById('report-meta');
-  if (!meta) return;
-
-  var params = new URLSearchParams(window.location.search);
-  if (params.get('new') !== '1') return;
-
-  var entry = {
-    slug: meta.getAttribute('data-slug'),
-    language: meta.getAttribute('data-language') || 'Unknown stack',
-    score: meta.getAttribute('data-score'),
-  };
-
-  var list = readRecentReports().filter(function (r) { return r.slug !== entry.slug; });
-  list.unshift(entry);
-  try {
-    localStorage.setItem(RECENT_REPORTS_KEY, JSON.stringify(list.slice(0, RECENT_REPORTS_MAX)));
-  } catch (e) {
-    // localStorage unavailable (private browsing, quota) — recording is
-    // best-effort, nothing else on the page depends on it.
-  }
-
-  params.delete('new');
-  var query = params.toString();
-  window.history.replaceState({}, '', window.location.pathname + (query ? '?' + query : ''));
-}
-
-function renderRecentReports() {
-  var section = document.getElementById('recent-reports-section');
-  var list = document.getElementById('recent-reports-list');
-  if (!section || !list) return;
-
-  var reports = readRecentReports();
-  if (reports.length === 0) return;
-
-  reports.forEach(function (r) {
-    var link = document.createElement('a');
-    link.href = '/report/' + encodeURIComponent(r.slug);
-    link.className = 'flex items-center justify-between gap-2 rounded-md border border-editor-border bg-editor-bg px-3 py-2 text-sm hover:border-brand/40 transition-colors';
-
-    var lang = document.createElement('span');
-    lang.className = 'text-gray-300';
-    lang.textContent = r.language;
-
-    var score = document.createElement('span');
-    score.className = 'text-xs text-gray-500';
-    score.textContent = r.score + '/100';
-
-    link.appendChild(lang);
-    link.appendChild(score);
-    list.appendChild(link);
-  });
-
-  section.classList.remove('hidden');
 }
 
 // Delegated (survives HTMX-swapped content, e.g. the generated-API-key
