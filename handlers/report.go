@@ -129,12 +129,12 @@ func ReportDownload(deps Deps) http.HandlerFunc {
 
 // ReportRescan godoc
 // @Summary      Re-run analysis for a GitHub-sourced report
-// @Description  Requires a session cookie and ownership of the report. Only GitHub-sourced reports can be rescanned (re-fetching a URL is cheap and idempotent) — ZIP-sourced reports aren't, since the original upload isn't retained after analysis. Re-fetches the same repository and kicks off a fresh analysis job, identical to submitting the URL again.
+// @Description  Requires a session cookie and ownership of the report. Only GitHub-sourced reports can be rescanned (re-fetching a URL is cheap and idempotent) — ZIP-sourced reports aren't, since the original upload isn't retained after analysis. Also requires the source repo to still be on the requester's watchlist (see startGitHubAnalysis) — if it was removed since the report was created, re-import it first. Re-fetches the same repository and kicks off a fresh analysis job, identical to submitting the URL again.
 // @Tags         web
 // @Produce      html
 // @Param        slug  path  string  true  "Report slug"
 // @Success      200  {string}  string  "HX-Redirect header points to /analyze/{jobID}/processing"
-// @Failure      403  {string}  string  "Not the owner, or not a GitHub-sourced report"
+// @Failure      403  {string}  string  "Not the owner, not a GitHub-sourced report, or the repo is no longer on the watchlist"
 // @Failure      404  {string}  string  "Unknown report"
 // @Failure      429  {string}  string  "Rate limit exceeded"
 // @Router       /report/{slug}/rescan [post]

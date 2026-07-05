@@ -91,9 +91,13 @@ func analyzeFormData(deps Deps, r *http.Request, user *models.User) map[string]a
 
 	hasGitHub := false
 	hasAPIKey := false
+	importedRepoCount := 0
 	if user != nil {
 		hasGitHub, _ = models.HasAnyGitHubAccount(r.Context(), deps.Pool, user.ID)
 		hasAPIKey, _ = models.HasAPIKey(r.Context(), deps.Pool, user.ID)
+		if repos, err := models.ListConnectedRepos(r.Context(), deps.Pool, user.ID); err == nil {
+			importedRepoCount = len(repos)
+		}
 	}
 
 	return map[string]any{
@@ -101,6 +105,7 @@ func analyzeFormData(deps Deps, r *http.Request, user *models.User) map[string]a
 		"AppURL":             deps.AppURL,
 		"MaxUpload":          maxBytes / (1024 * 1024),
 		"HasGitHubConnected": hasGitHub,
+		"ImportedRepoCount":  importedRepoCount,
 		"GitHubConnected":    r.URL.Query().Get("github_connected") == "1",
 		"OAuthError":         r.URL.Query().Get("oauth_error") == "1",
 		"HasAPIKey":          hasAPIKey,
@@ -191,12 +196,13 @@ func acceptZipUpload(w http.ResponseWriter, r *http.Request, deps Deps, userID *
 
 // AnalyzeGitHub godoc
 // @Summary      Submit a project via a GitHub repository URL
-// @Description  Requires a signed-in session (see RequireAuth). Parses a github.com/owner/repo URL, fetches repo metadata, and downloads its default-branch zipball (same MAX_RAW_UPLOAD_BYTES/MAX_UPLOAD_BYTES limits and node_modules/vendor/.git filtering as direct ZIP upload). Public repos work as soon as you're signed in; private repos additionally require the requester to have connected GitHub via GET /auth/github/connect. Kicks off the same analysis pipeline as the ZIP upload path.
+// @Description  Requires a signed-in session (see RequireAuth) and that owner/repo is already on the requester's watchlist (models.IsRepoConnected) — connect GitHub via GET /auth/github/connect, browse an account's repos, and add the one you want before this succeeds; pasting an arbitrary not-yet-imported URL is rejected with 403 regardless of visibility. Fetches repo metadata and downloads its default-branch zipball (same MAX_RAW_UPLOAD_BYTES/MAX_UPLOAD_BYTES limits and node_modules/vendor/.git filtering as direct ZIP upload). Kicks off the same analysis pipeline as the ZIP upload path.
 // @Tags         web
 // @Accept       x-www-form-urlencoded
 // @Param        url  formData  string  true  "GitHub repository URL, e.g. github.com/owner/repo"
 // @Success      200  {string}  string  "HX-Redirect header points to /analyze/{jobID}/processing"
 // @Failure      400  {string}  string  "Invalid URL or corrupted archive"
+// @Failure      403  {string}  string  "Repository isn't on the requester's watchlist yet — import it first"
 // @Failure      404  {string}  string  "Repository not found or not accessible — connect GitHub for private repos"
 // @Failure      413  {string}  string  "Repository archive exceeds the configured upload limit"
 // @Failure      429  {string}  string  "GitHub API rate limit exceeded"
@@ -233,8 +239,25 @@ func AnalyzeGitHub(deps Deps) http.HandlerFunc {
 // and kicks off the analysis pipeline in the background. Shared by
 // AnalyzeGitHub and the report page's rescan action, which differ only in
 // how they arrive at (userID, owner, repo) — status == 0 means success.
+//
+// Requires owner/repo to already be on the requester's watchlist
+// (models.IsRepoConnected) — GitHub analysis only ever runs on repos
+// explicitly imported after connecting an account; pasting an arbitrary
+// URL that hasn't been imported is rejected regardless of visibility.
 func startGitHubAnalysis(ctx context.Context, deps Deps, userID *uuid.UUID, owner, repo, ipAddress string) (job *models.AnalysisJob, status int, userMsg string) {
-	client, info, err := resolveGitHubAccess(ctx, deps, userID, owner, repo)
+	if userID == nil {
+		return nil, http.StatusUnauthorized, "sign in required"
+	}
+	connected, err := models.IsRepoConnected(ctx, deps.Pool, *userID, owner+"/"+repo)
+	if err != nil {
+		log.Printf("check connected repo %s/%s: %v", owner, repo, err)
+		return nil, http.StatusInternalServerError, "could not start analysis"
+	}
+	if !connected {
+		return nil, http.StatusForbidden, "Import this repository from your dashboard before analyzing it — connect GitHub, browse the account's repos, and add the one you want."
+	}
+
+	client, info, err := resolveGitHubAccess(ctx, deps, *userID, owner, repo)
 	if err != nil {
 		switch {
 		case errors.Is(err, ghclient.ErrNotFound):
@@ -302,27 +325,26 @@ func startGitHubAnalysis(ctx context.Context, deps Deps, userID *uuid.UUID, owne
 	return j, 0, ""
 }
 
-// resolveGitHubAccess finds a working GitHub client for owner/repo. Tries
+// resolveGitHubAccess finds a working GitHub client for owner/repo, which
+// startGitHubAnalysis has already confirmed is on userID's watchlist. Tries
 // unauthenticated first — covers the public-repo majority with zero
-// DB/token overhead. For a private repo (userID != nil), tries the account
-// it's explicitly connected through if it's on the watchlist, then falls
-// back to the user's first-connected account. No "try every account" loop:
-// connected repos always resolve their account precisely via a stored
-// foreign key; this fallback is for ad-hoc pastes/rescans of repos that
-// aren't (yet) on the watchlist. Returns the original not-found/rate-limit
-// error if nothing works, so callers render the same message either way.
-func resolveGitHubAccess(ctx context.Context, deps Deps, userID *uuid.UUID, owner, repo string) (*ghclient.Client, *ghclient.RepoInfo, error) {
+// DB/token overhead. For a private repo, tries the account it's explicitly
+// connected through, then falls back to the user's first-connected account
+// (only matters if a connected_repos row somehow lacks its account link).
+// Returns the original not-found/rate-limit error if nothing works, so
+// callers render the same message either way.
+func resolveGitHubAccess(ctx context.Context, deps Deps, userID uuid.UUID, owner, repo string) (*ghclient.Client, *ghclient.RepoInfo, error) {
 	anon := ghclient.NewClient("")
 	if info, err := anon.GetRepo(ctx, owner, repo); err == nil {
 		return anon, info, nil
-	} else if userID == nil || !errors.Is(err, ghclient.ErrNotFound) {
+	} else if !errors.Is(err, ghclient.ErrNotFound) {
 		return nil, nil, err
 	}
 
-	for _, encrypted := range githubTokenCandidates(ctx, deps, *userID, owner+"/"+repo) {
+	for _, encrypted := range githubTokenCandidates(ctx, deps, userID, owner+"/"+repo) {
 		token, decErr := tokencrypto.DecryptToken(encrypted)
 		if decErr != nil {
-			log.Printf("decrypt github token for user %s: %v", *userID, decErr)
+			log.Printf("decrypt github token for user %s: %v", userID, decErr)
 			continue
 		}
 		c := ghclient.NewClient(token)
