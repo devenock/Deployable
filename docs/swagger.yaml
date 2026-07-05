@@ -364,11 +364,12 @@ paths:
       consumes:
       - application/x-www-form-urlencoded
       description: Requires a signed-in session (see RequireAuth). Parses a github.com/owner/repo
-        URL, fetches repo metadata, and downloads its default-branch zipball (max
-        100MB by default, same limit and cap as direct ZIP upload). Public repos work
-        as soon as you're signed in; private repos additionally require the requester
-        to have connected GitHub via GET /auth/github/connect. Kicks off the same
-        analysis pipeline as the ZIP upload path.
+        URL, fetches repo metadata, and downloads its default-branch zipball (same
+        MAX_RAW_UPLOAD_BYTES/MAX_UPLOAD_BYTES limits and node_modules/vendor/.git
+        filtering as direct ZIP upload). Public repos work as soon as you're signed
+        in; private repos additionally require the requester to have connected GitHub
+        via GET /auth/github/connect. Kicks off the same analysis pipeline as the
+        ZIP upload path.
       parameters:
       - description: GitHub repository URL, e.g. github.com/owner/repo
         in: formData
@@ -404,10 +405,12 @@ paths:
     post:
       consumes:
       - multipart/form-data
-      description: Requires a signed-in session (see RequireAuth). Validates and extracts
-        the uploaded zip (max 100MB by default, configurable via MAX_UPLOAD_BYTES;
-        zip-slip protected), creates an analysis job, and kicks off the analysis pipeline
-        in the background. Responds with an HX-Redirect header to the processing page
+      description: Requires a signed-in session (see RequireAuth). Accepts a zip up
+        to MAX_RAW_UPLOAD_BYTES (512MB by default) over the wire, but filters out
+        node_modules/vendor/.git/build-output entries during extraction — the kept
+        source is capped separately at MAX_UPLOAD_BYTES (100MB by default; zip-slip
+        protected). Creates an analysis job and kicks off the analysis pipeline in
+        the background. Responds with an HX-Redirect header to the processing page
         rather than a body — the client (HTMX) follows it as a full navigation.
       parameters:
       - description: Project source as a .zip archive
