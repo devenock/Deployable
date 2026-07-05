@@ -1,9 +1,11 @@
-{{/* repo-action-button: the Add/Remove toggle for one GitHub repo. Rendered
-     both as part of a picker row and as the direct response to the
-     add/remove actions themselves (hx-target="this" swaps just the button,
-     so the row it lives in never has to re-render). Carries AccountID
-     through so re-adding after a remove (or adding for the first time)
-     stays attached to the account it was browsed under. */}}
+{{/* repo-action-button: the Import/Remove toggle for one GitHub repo.
+     Rendered both as part of a picker row and as the direct response to the
+     import/remove actions themselves (hx-target="this" swaps just the
+     button, so the row it lives in never has to re-render). Carries
+     AccountID through so re-importing after a remove (or importing for the
+     first time) stays attached to the account it was browsed under. Only
+     imported repos (models.IsRepoConnected) can be analyzed — see
+     startGitHubAnalysis. */}}
 {{define "repo-action-button"}}
 {{if .ConnectedID}}
 <button type="button"
@@ -18,13 +20,13 @@
         hx-vals='{"account_id": "{{.AccountID}}", "github_id": "{{.GitHubID}}", "full_name": "{{.FullName}}", "private": "{{.Private}}", "default_branch": "{{.DefaultBranch}}"}'
         hx-target="this" hx-swap="outerHTML"
         class="shrink-0 rounded-md bg-brand px-3 py-1.5 text-xs font-medium text-white hover:bg-indigo-500 transition-colors">
-  Add
+  Import
 </button>
 {{end}}
 {{end}}
 
 {{/* repo-picker-row: one browsable GitHub repo — name, private badge, and
-     the Add/Remove toggle. */}}
+     the Import/Remove toggle. */}}
 {{define "repo-picker-row"}}
 <div class="flex items-center justify-between gap-3 rounded-md border border-editor-border bg-editor-bg px-4 py-2.5">
   <div class="min-w-0 flex-1">
@@ -83,7 +85,7 @@
     <button type="button" aria-label="Disconnect account"
             hx-delete="/account/github/accounts/{{.ID}}"
             hx-target="closest [data-github-account-row]" hx-swap="outerHTML swap:0.2s"
-            hx-confirm="Disconnect {{.GitHubLogin}}? Repos added through it will be removed from your watchlist (past reports aren't affected)."
+            hx-confirm="Disconnect {{.GitHubLogin}}? Repos imported through it will be removed from your imported list (past reports aren't affected, but you'll need to re-import before analyzing or rescanning again)."
             class="rounded-md border border-danger/30 bg-danger/5 p-1.5 text-danger hover:bg-danger/10 transition-colors">
       {{template "icon-trash" $}}
     </button>
