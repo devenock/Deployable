@@ -11,10 +11,10 @@
   {{template "app-topbar" .}}
   {{template "flash" .}}
 
-  <main class="max-w-4xl mx-auto px-4 sm:px-8 py-8">
+  <main class="px-4 sm:px-8 py-8">
 
     <!-- Overview -->
-    <div data-dash-panel="dashboard" class="{{if ne .ActiveNav "dashboard"}}hidden{{end}}">
+    <div data-dash-panel="dashboard" class="max-w-4xl {{if ne .ActiveNav "dashboard"}}hidden{{end}}">
       <div>
         <h1 class="text-2xl font-bold text-white tracking-tight">Overview</h1>
         <p class="mt-1 text-sm text-gray-400">Your analysis activity and connected repos at a glance.</p>
@@ -120,8 +120,10 @@
         </a>
       </div>
 
-      <div class="mt-6">
-        <div class="relative">
+      <form id="reports-filter-form" class="mt-6 flex flex-col lg:flex-row gap-3"
+            hx-get="/dashboard?tab=reports" hx-target="#dashboard-results" hx-push-url="true"
+            hx-trigger="change, keyup changed delay:400ms from:input[type='search']">
+        <div class="relative flex-1 min-w-0">
           <span class="pointer-events-none absolute inset-y-0 left-3 flex items-center text-gray-500">
             <svg class="h-[18px] w-[18px]" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
               <circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.7"/>
@@ -130,13 +132,28 @@
           </span>
           <input type="search" name="search" value="{{.Search}}"
                  placeholder="Search by repo, filename, language, or framework…"
-                 class="w-full rounded-md border border-editor-border bg-editor-card pl-10 pr-3 py-2.5 text-sm text-gray-200 placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent transition-shadow"
-                 hx-get="/dashboard?tab=reports"
-                 hx-target="#dashboard-results"
-                 hx-trigger="keyup changed delay:400ms, search"
-                 hx-push-url="true">
+                 class="w-full rounded-md border border-editor-border bg-editor-card pl-10 pr-3 py-2.5 text-sm text-gray-200 placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent transition-shadow">
         </div>
-      </div>
+        <select name="type" aria-label="Filter by source"
+                class="rounded-md border border-editor-border bg-editor-card px-3 py-2.5 text-sm text-gray-200 focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent transition-shadow">
+          <option value="" {{if eq .Type ""}}selected{{end}}>All sources</option>
+          <option value="github" {{if eq .Type "github"}}selected{{end}}>GitHub</option>
+          <option value="zip" {{if eq .Type "zip"}}selected{{end}}>ZIP upload</option>
+        </select>
+        <select name="status" aria-label="Filter by readiness"
+                class="rounded-md border border-editor-border bg-editor-card px-3 py-2.5 text-sm text-gray-200 focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent transition-shadow">
+          <option value="" {{if eq .Status ""}}selected{{end}}>All statuses</option>
+          <option value="ready" {{if eq .Status "ready"}}selected{{end}}>Ready (60+)</option>
+          <option value="attention" {{if eq .Status "attention"}}selected{{end}}>Needs attention (&lt;60)</option>
+        </select>
+        <select name="sort" aria-label="Sort order"
+                class="rounded-md border border-editor-border bg-editor-card px-3 py-2.5 text-sm text-gray-200 focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent transition-shadow">
+          <option value="newest" {{if eq .Sort "newest"}}selected{{end}}>Newest first</option>
+          <option value="oldest" {{if eq .Sort "oldest"}}selected{{end}}>Oldest first</option>
+          <option value="score_desc" {{if eq .Sort "score_desc"}}selected{{end}}>Highest score</option>
+          <option value="score_asc" {{if eq .Sort "score_asc"}}selected{{end}}>Lowest score</option>
+        </select>
+      </form>
 
       <div id="dashboard-results" class="mt-6">
         {{template "dashboard-results" .}}
@@ -151,50 +168,69 @@
 
 {{define "dashboard-results"}}
 {{if .Reports}}
-<div class="space-y-3">
-  {{range .Reports}}
-  <div data-report-row class="rounded-lg border border-editor-border bg-editor-card p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-    <div class="min-w-0 flex-1">
-      <div class="flex items-center gap-2">
-        <a href="/report/{{.Slug}}" class="font-medium text-white hover:text-brand transition-colors truncate">
-          {{if .InputRef}}{{.InputRef}}{{else}}ZIP upload{{end}}
-        </a>
-        <span class="shrink-0 rounded-full border border-editor-border px-2 py-0.5 text-[10px] uppercase tracking-wide text-gray-500">{{.InputType}}</span>
-      </div>
-      <p class="mt-1 text-xs text-gray-500">
-        {{if .Language}}{{.Language}}{{else}}Unknown stack{{end}}{{if .Framework}} · {{.Framework}}{{end}} · Analyzed {{timeAgo .CreatedAt}}
-      </p>
-    </div>
-    <div class="flex items-center gap-2 shrink-0">
-      <span class="w-10 text-center text-sm font-semibold {{scoreColor .ReadinessScore}}">{{.ReadinessScore}}</span>
-      <a href="/report/{{.Slug}}"
-         class="rounded-md border border-editor-border bg-editor-bg px-3 py-1.5 text-xs text-gray-300 hover:bg-editor-surface transition-colors">
-        View
-      </a>
-      {{if eq .InputType "github"}}
-      <button type="button" aria-label="Rescan"
-              hx-post="/report/{{.Slug}}/rescan" hx-swap="none"
-              class="rounded-md border border-editor-border bg-editor-bg p-1.5 text-gray-400 hover:text-gray-200 transition-colors">
-        {{template "icon-refresh" $}}
-      </button>
+<div class="overflow-x-auto rounded-xl border border-editor-border bg-editor-card/60">
+  <table class="w-full text-left text-sm">
+    <thead>
+      <tr class="border-b border-editor-border text-xs uppercase tracking-wide text-gray-500">
+        <th class="whitespace-nowrap px-4 py-3 font-medium">Source</th>
+        <th class="whitespace-nowrap px-4 py-3 font-medium">Type</th>
+        <th class="whitespace-nowrap px-4 py-3 font-medium">Stack</th>
+        <th class="whitespace-nowrap px-4 py-3 font-medium">Analyzed</th>
+        <th class="whitespace-nowrap px-4 py-3 text-center font-medium">Score</th>
+        <th class="whitespace-nowrap px-4 py-3 text-right font-medium">Actions</th>
+      </tr>
+    </thead>
+    <tbody class="divide-y divide-editor-border">
+      {{range .Reports}}
+      <tr data-report-row class="hover:bg-editor-surface/60 transition-colors">
+        <td class="max-w-xs truncate px-4 py-3">
+          <a href="/report/{{.Slug}}" class="font-medium text-white hover:text-brand transition-colors">
+            {{if .InputRef}}{{.InputRef}}{{else}}ZIP upload{{end}}
+          </a>
+        </td>
+        <td class="whitespace-nowrap px-4 py-3">
+          <span class="rounded-full border border-editor-border px-2 py-0.5 text-[10px] uppercase tracking-wide text-gray-500">{{.InputType}}</span>
+        </td>
+        <td class="whitespace-nowrap px-4 py-3 text-gray-400">
+          {{if .Language}}{{.Language}}{{else}}Unknown{{end}}{{if .Framework}} · {{.Framework}}{{end}}
+        </td>
+        <td class="whitespace-nowrap px-4 py-3 text-gray-500">{{timeAgo .CreatedAt}}</td>
+        <td class="whitespace-nowrap px-4 py-3 text-center">
+          <span class="font-semibold {{scoreColor .ReadinessScore}}">{{.ReadinessScore}}</span>
+        </td>
+        <td class="whitespace-nowrap px-4 py-3">
+          <div class="flex items-center justify-end gap-2">
+            <a href="/report/{{.Slug}}"
+               class="rounded-md border border-editor-border bg-editor-bg px-3 py-1.5 text-xs text-gray-300 hover:bg-editor-surface transition-colors">
+              View
+            </a>
+            {{if eq .InputType "github"}}
+            <button type="button" aria-label="Rescan"
+                    hx-post="/report/{{.Slug}}/rescan" hx-swap="none"
+                    class="rounded-md border border-editor-border bg-editor-bg p-1.5 text-gray-400 hover:text-gray-200 transition-colors">
+              {{template "icon-refresh" $}}
+            </button>
+            {{end}}
+            <button type="button" aria-label="Delete"
+                    hx-delete="/report/{{.Slug}}" hx-target="closest [data-report-row]" hx-swap="outerHTML swap:0.2s"
+                    hx-confirm="Delete this report? This can't be undone."
+                    class="rounded-md border border-danger/30 bg-danger/5 p-1.5 text-danger hover:bg-danger/10 transition-colors">
+              {{template "icon-trash" $}}
+            </button>
+          </div>
+        </td>
+      </tr>
       {{end}}
-      <button type="button" aria-label="Delete"
-              hx-delete="/report/{{.Slug}}" hx-target="closest [data-report-row]" hx-swap="outerHTML swap:0.2s"
-              hx-confirm="Delete this report? This can't be undone."
-              class="rounded-md border border-danger/30 bg-danger/5 p-1.5 text-danger hover:bg-danger/10 transition-colors">
-        {{template "icon-trash" $}}
-      </button>
-    </div>
-  </div>
-  {{end}}
+    </tbody>
+  </table>
 </div>
 
-<div class="mt-6 flex items-center justify-between text-sm text-gray-400">
+<div class="mt-4 flex items-center justify-between text-sm text-gray-400">
   <span>{{.Total}} report{{if ne .Total 1}}s{{end}}</span>
   {{if gt .TotalPages 1}}
   <div class="flex items-center gap-2">
     {{if .HasPrev}}
-    <button hx-get="/dashboard?tab=reports&search={{.Search | urlquery}}&page={{sub .Page 1}}"
+    <button hx-get="/dashboard?tab=reports&page={{sub .Page 1}}" hx-include="#reports-filter-form"
             hx-target="#dashboard-results" hx-push-url="true"
             class="rounded-md border border-editor-border px-3 py-1.5 hover:bg-editor-card transition-colors">
       Prev
@@ -202,7 +238,7 @@
     {{end}}
     <span class="px-2">Page {{.Page}} of {{.TotalPages}}</span>
     {{if .HasNext}}
-    <button hx-get="/dashboard?tab=reports&search={{.Search | urlquery}}&page={{add .Page 1}}"
+    <button hx-get="/dashboard?tab=reports&page={{add .Page 1}}" hx-include="#reports-filter-form"
             hx-target="#dashboard-results" hx-push-url="true"
             class="rounded-md border border-editor-border px-3 py-1.5 hover:bg-editor-card transition-colors">
       Next
@@ -214,8 +250,8 @@
 
 {{else}}
 <div class="rounded-xl border border-dashed border-editor-border bg-editor-card/50 px-6 py-16 text-center">
-  {{if .Search}}
-  <p class="text-gray-400">No reports match "{{.Search}}".</p>
+  {{if or .Search .Type .Status}}
+  <p class="text-gray-400">No reports match these filters.</p>
   {{else}}
   <p class="text-gray-400">No reports yet.</p>
   <a href="/dashboard?tab=analyze" data-dash-nav-trigger="analyze" class="mt-3 inline-block text-sm text-brand hover:underline">Analyze your first project →</a>
