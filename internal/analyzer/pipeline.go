@@ -32,7 +32,9 @@ func RunWithProgress(ctx context.Context, dir string, claudeClient ClaudeClient,
 		return nil, fmt.Errorf("file walk failed: %w", err)
 	}
 	result.Manifest = manifest
-	result.ContentHash = manifest.ContentHash()
+	result.ContentHash = manifest.ContentHash(func(done, total int) {
+		onProgress(1, fmt.Sprintf("Reading project files (%d/%d)", done, total))
+	})
 
 	onProgress(2, "Detecting stack and framework")
 	result.StackInfo = DetectStack(manifest)
@@ -40,7 +42,9 @@ func RunWithProgress(ctx context.Context, dir string, claudeClient ClaudeClient,
 	result.EnvVars = ExtractEnvVars(manifest, dir)
 
 	onProgress(3, "Scanning for security issues")
-	result.SecretFindings = ScanSecrets(manifest, dir)
+	result.SecretFindings = ScanSecrets(manifest, dir, func(done, total int) {
+		onProgress(3, fmt.Sprintf("Scanning for security issues (%d/%d)", done, total))
+	})
 	applyEnvExampleCrossReference(&result.InfraChecks, manifest, dir, result.EnvVars)
 
 	onProgress(4, "Analyzing with AI")

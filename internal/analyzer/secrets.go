@@ -49,29 +49,41 @@ const secretScanFileCap = 3000
 
 // ScanSecrets regex-scans manifest files for hardcoded credentials and
 // flags a committed .env not covered by .gitignore. Matched secret values
-// are never stored — findings carry a masked excerpt only.
-func ScanSecrets(manifest FileManifest, dir string) []SecretFinding {
+// are never stored — findings carry a masked excerpt only. onProgress, if
+// non-nil, is invoked periodically (see progressInterval) with
+// (done, total) as files are scanned; pass nil where progress doesn't
+// matter.
+func ScanSecrets(manifest FileManifest, dir string, onProgress func(done, total int)) []SecretFinding {
 	var findings []SecretFinding
 	scanned := 0
+	total := len(manifest.Files)
+	interval := progressInterval(total)
 
-	for _, f := range manifest.Files {
-		if binaryExts[f.Ext] || f.Size == 0 || f.Size > maxWalkFileBytes {
-			continue
+	report := func(done int) {
+		if onProgress != nil && (done == total || done%interval == 0) {
+			onProgress(done, total)
 		}
-		if hasAnySuffix(f.Path, secretSkipSuffixes) {
-			continue
-		}
+	}
+
+	for i, f := range manifest.Files {
 		if scanned >= secretScanFileCap {
+			report(total)
 			break
+		}
+		if binaryExts[f.Ext] || f.Size == 0 || f.Size > maxWalkFileBytes || hasAnySuffix(f.Path, secretSkipSuffixes) {
+			report(i + 1)
+			continue
 		}
 
 		data, err := os.ReadFile(filepath.Join(dir, filepath.FromSlash(f.Path)))
 		if err != nil {
+			report(i + 1)
 			continue
 		}
 		scanned++
 
 		findings = append(findings, scanFileForSecrets(f.Path, data)...)
+		report(i + 1)
 	}
 
 	if set := newFileSet(manifest); set.has(".env") {

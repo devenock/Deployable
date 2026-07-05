@@ -87,10 +87,17 @@ func WalkFiles(dir string) (FileManifest, error) {
 // ContentHash computes a stable SHA-256 hash over the manifest's file paths,
 // sizes, and content (for files under maxWalkFileBytes), used for report
 // deduplication. Two uploads of the same project produce the same hash
-// regardless of file walk order.
-func (m FileManifest) ContentHash() string {
+// regardless of file walk order. onProgress, if non-nil, is invoked
+// periodically (not necessarily every file — see progressInterval) with
+// (done, total) as files are hashed, always including a final call with
+// done == total; pass nil where progress doesn't matter (e.g. a dedup
+// lookup that just needs the finished hash).
+func (m FileManifest) ContentHash(onProgress func(done, total int)) string {
 	h := sha256.New()
-	for _, f := range m.Files {
+	total := len(m.Files)
+	interval := progressInterval(total)
+
+	for i, f := range m.Files {
 		h.Write([]byte(f.Path))
 		h.Write([]byte{0})
 
@@ -100,8 +107,25 @@ func (m FileManifest) ContentHash() string {
 			}
 		}
 		h.Write([]byte{0})
+
+		done := i + 1
+		if onProgress != nil && (done == total || done%interval == 0) {
+			onProgress(done, total)
+		}
 	}
 	return hex.EncodeToString(h.Sum(nil))
+}
+
+// progressInterval picks a reporting cadence that yields roughly 20 updates
+// across total items, without reporting less often than every file for
+// small counts — used by ContentHash and ScanSecrets to throttle how often
+// their onProgress callback fires.
+func progressInterval(total int) int {
+	interval := total / 20
+	if interval < 1 {
+		interval = 1
+	}
+	return interval
 }
 
 // ReadFileCapped reads a file relative to the manifest root, truncated to
