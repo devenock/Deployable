@@ -49,15 +49,11 @@
 {{end}}
 
 <script>
-  function showFormError(boxID, message) {
-    const box = document.getElementById(boxID);
-    box.innerHTML = '<div class="mb-4 rounded-md border border-danger/40 bg-danger/10 px-4 py-3 text-sm text-danger">' +
-      (message || 'Something went wrong, please try again.') + '</div>';
-  }
-
   document.body.addEventListener('htmx:responseError', function (evt) {
-    const boxID = evt.detail.elt && evt.detail.elt.id === 'github-form' ? 'github-error' : 'upload-error';
-    showFormError(boxID, evt.detail.xhr.responseText);
+    const box = document.getElementById('upload-error');
+    if (!box) return;
+    box.innerHTML = '<div class="mb-4 rounded-md border border-danger/40 bg-danger/10 px-4 py-3 text-sm text-danger">' +
+      (evt.detail.xhr.responseText || 'Something went wrong, please try again.') + '</div>';
   });
 </script>
 </body>
@@ -79,7 +75,7 @@
 
     {{if .GitHubConnected}}
     <div class="mt-6 rounded-md border border-success/40 bg-success/10 px-4 py-3 text-sm text-success">
-      GitHub connected — you can now analyze private repositories.
+      GitHub connected — now import the repos you want to analyze from the GitHub tab below.
     </div>
     {{end}}
     {{if .OAuthError}}
@@ -97,7 +93,7 @@
           </button>
           <button type="button" data-tab-trigger="github" aria-selected="false"
                   class="rounded-md px-4 py-2 text-sm font-medium text-gray-400 hover:text-gray-200 transition-colors">
-            🐙 GitHub URL
+            🐙 GitHub
           </button>
           <button type="button" data-tab-trigger="cli" aria-selected="false"
                   class="rounded-md px-4 py-2 text-sm font-medium text-gray-400 hover:text-gray-200 transition-colors">
@@ -149,33 +145,52 @@
 
         <!-- GitHub -->
         <div data-tab-panel="github" class="hidden">
-          <div id="github-error"></div>
-
-          <form id="github-form" hx-post="/analyze/github" hx-swap="none" hx-indicator="#github-progress">
-            <label class="block text-sm text-gray-400 mb-1.5" for="github-url">Repository URL</label>
-            <div class="relative">
-              <span class="pointer-events-none absolute inset-y-0 left-3 flex items-center text-gray-500">{{template "icon-github" .}}</span>
-              <input type="text" id="github-url" name="url" required
-                     placeholder="github.com/owner/repository"
-                     class="w-full rounded-md border border-editor-border bg-editor-bg pl-10 pr-3 py-2.5 text-sm text-gray-200 placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent transition-shadow">
+          {{if gt .ImportedRepoCount 0}}
+          <div class="py-4 text-center">
+            <div class="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-brand/10 text-brand">
+              {{template "icon-github" .}}
             </div>
-            <button type="submit"
-                    class="mt-3 w-full rounded-md bg-brand px-4 py-2.5 text-sm font-medium text-white shadow-lg shadow-brand/20 hover:bg-indigo-500 transition-colors">
-              Analyze repository
-            </button>
-            <p class="mt-3 text-center text-xs text-gray-600">
-              Private repos:
-              {{if .HasGitHubConnected}}
-                <span class="text-success">GitHub connected ✓</span>
-              {{else}}
-                <a href="/auth/github/connect" class="text-brand hover:underline">Connect GitHub</a>
-              {{end}}
+            <h3 class="mt-3 text-sm font-medium text-white">
+              You have {{.ImportedRepoCount}} repo{{if ne .ImportedRepoCount 1}}s{{end}} imported
+            </h3>
+            <p class="mt-1.5 text-sm text-gray-400 max-w-sm mx-auto">
+              Analyze any of them from your dashboard, or import more.
             </p>
-            <div id="github-progress" class="htmx-indicator mt-3 flex items-center justify-center gap-2 text-xs text-gray-400">
-              {{template "icon-spinner" .}}
-              Fetching repository and starting analysis…
+            <a href="/dashboard" data-dash-nav-trigger="dashboard"
+               class="mt-4 inline-flex items-center justify-center rounded-md bg-brand px-4 py-2.5 text-sm font-medium text-white shadow-lg shadow-brand/20 hover:bg-indigo-500 transition-colors">
+              Go to your imported repos →
+            </a>
+          </div>
+          {{else if .HasGitHubConnected}}
+          <div class="py-4 text-center">
+            <div class="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-brand/10 text-brand">
+              {{template "icon-github" .}}
             </div>
-          </form>
+            <h3 class="mt-3 text-sm font-medium text-white">GitHub connected — now import a repo</h3>
+            <p class="mt-1.5 text-sm text-gray-400 max-w-sm mx-auto">
+              Browse your connected account's repos and add the one you want to analyze.
+            </p>
+            <a href="/dashboard" data-dash-nav-trigger="dashboard"
+               class="mt-4 inline-flex items-center justify-center rounded-md bg-brand px-4 py-2.5 text-sm font-medium text-white shadow-lg shadow-brand/20 hover:bg-indigo-500 transition-colors">
+              Browse &amp; import repos →
+            </a>
+          </div>
+          {{else}}
+          <div class="py-4 text-center">
+            <div class="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-brand/10 text-brand">
+              {{template "icon-github" .}}
+            </div>
+            <h3 class="mt-3 text-sm font-medium text-white">Connect GitHub to analyze a repository</h3>
+            <p class="mt-1.5 text-sm text-gray-400 max-w-sm mx-auto">
+              For security, Deployable only analyzes repos you've explicitly imported after connecting your
+              account — pasting an arbitrary URL isn't supported.
+            </p>
+            <a href="/auth/github/connect?return_to=/dashboard"
+               class="mt-4 inline-flex items-center gap-2 rounded-md bg-brand px-4 py-2.5 text-sm font-medium text-white shadow-lg shadow-brand/20 hover:bg-indigo-500 transition-colors">
+              {{template "icon-github" .}} Connect GitHub
+            </a>
+          </div>
+          {{end}}
         </div>
 
         <!-- CLI -->
