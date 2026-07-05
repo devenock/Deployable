@@ -660,6 +660,21 @@ paths:
         in: query
         name: search
         type: string
+      - description: '''zip'', ''github'', or ''cli'' — filter by source type (Reports
+          section)'
+        in: query
+        name: type
+        type: string
+      - description: '''attention'' (score < 60) or ''ready'' (score >= 60) (Reports
+          section)'
+        in: query
+        name: status
+        type: string
+      - description: '''newest'' (default), ''oldest'', ''score_desc'', or ''score_asc''
+          (Reports section)'
+        in: query
+        name: sort
+        type: string
       - description: Page number, 1-indexed (Reports section)
         in: query
         name: page

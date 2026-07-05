@@ -759,6 +759,24 @@
                         "in": "query"
                     },
                     {
+                        "type": "string",
+                        "description": "'zip', 'github', or 'cli' — filter by source type (Reports section)",
+                        "name": "type",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "'attention' (score \u003c 60) or 'ready' (score \u003e= 60) (Reports section)",
+                        "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "'newest' (default), 'oldest', 'score_desc', or 'score_asc' (Reports section)",
+                        "name": "sort",
+                        "in": "query"
+                    },
+                    {
                         "type": "integer",
                         "description": "Page number, 1-indexed (Reports section)",
                         "name": "page",
