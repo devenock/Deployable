@@ -265,7 +265,7 @@ const docTemplate = `{
         },
         "/analyze": {
             "get": {
-                "description": "Public, rate-limited input page for starting an analysis (zip upload; GitHub/CLI tabs land in Phase 3/4). Works for anonymous visitors — if a session cookie is present the resulting job/report is attributed to that user. Logged-in visitors get the dashboard's sidebar shell instead of the marketing nav.",
+                "description": "Input page for starting an analysis. Viewable by anyone, but actually submitting one (zip, GitHub URL, or CLI with an API key) requires a signed-in session — a scan started anonymously can't be linked to an account after the fact, so anonymous visitors get a sign-in prompt in place of the form. Logged-in visitors get the dashboard's sidebar shell instead of the marketing nav.",
                 "produces": [
                     "text/html"
                 ],
@@ -285,7 +285,7 @@ const docTemplate = `{
         },
         "/analyze/github": {
             "post": {
-                "description": "Parses a github.com/owner/repo URL, fetches repo metadata, and downloads its default-branch zipball (max 100MB by default, same limit and cap as direct ZIP upload). Public repos work with no account; private repos require the requester to have connected GitHub via GET /auth/github/connect. Kicks off the same analysis pipeline as the ZIP upload path.",
+                "description": "Requires a signed-in session (see RequireAuth). Parses a github.com/owner/repo URL, fetches repo metadata, and downloads its default-branch zipball (max 100MB by default, same limit and cap as direct ZIP upload). Public repos work as soon as you're signed in; private repos additionally require the requester to have connected GitHub via GET /auth/github/connect. Kicks off the same analysis pipeline as the ZIP upload path.",
                 "consumes": [
                     "application/x-www-form-urlencoded"
                 ],
@@ -338,7 +338,7 @@ const docTemplate = `{
         },
         "/analyze/zip": {
             "post": {
-                "description": "Validates and extracts the uploaded zip (max 100MB by default, configurable via MAX_UPLOAD_BYTES; zip-slip protected), creates an analysis job, and kicks off the analysis pipeline in the background. Responds with an HX-Redirect header to the processing page rather than a body — the client (HTMX) follows it as a full navigation.",
+                "description": "Requires a signed-in session (see RequireAuth). Validates and extracts the uploaded zip (max 100MB by default, configurable via MAX_UPLOAD_BYTES; zip-slip protected), creates an analysis job, and kicks off the analysis pipeline in the background. Responds with an HX-Redirect header to the processing page rather than a body — the client (HTMX) follows it as a full navigation.",
                 "consumes": [
                     "multipart/form-data"
                 ],
@@ -379,7 +379,7 @@ const docTemplate = `{
         },
         "/analyze/{jobID}/processing": {
             "get": {
-                "description": "Renders the live-progress page for a running job; the page itself polls GET /analyze/{jobID}/status every 2 seconds via HTMX.",
+                "description": "Requires a signed-in session (see RequireAuth). Renders the live-progress page for a running job; the page itself polls GET /analyze/{jobID}/status every 2 seconds via HTMX.",
                 "produces": [
                     "text/html"
                 ],
@@ -414,7 +414,7 @@ const docTemplate = `{
         },
         "/analyze/{jobID}/status": {
             "get": {
-                "description": "HTMX polling target — returns an HTML partial reflecting current progress. Once the job completes, responds with an HX-Redirect header pointing at the report page instead of a body.",
+                "description": "Requires a signed-in session (see RequireAuth). HTMX polling target — returns an HTML partial reflecting current progress. Once the job completes, responds with an HX-Redirect header pointing at the report page instead of a body.",
                 "produces": [
                     "text/html"
                 ],
@@ -433,7 +433,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "Progress partial, or HX-Redirect to /report/{slug}?new=1 once complete",
+                        "description": "Progress partial, or HX-Redirect to /report/{slug} once complete",
                         "schema": {
                             "type": "string"
                         }
